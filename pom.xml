@@ -32,6 +32,11 @@
             <artifactId>javafx-controls</artifactId>
             <version>17.0.2</version> <!-- Or the version suitable for Java 23 -->
         </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.34.0</version> <!-- Or the latest version -->
+        </dependency>
     </dependencies>
 
     <build>
