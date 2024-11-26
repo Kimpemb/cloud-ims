@@ -13,6 +13,7 @@ public class SideMenu extends VBox {
         // Create the buttons for each menu item
         Button dashboardButton = new Button("Dashboard");
         Button productsButton = new Button("Products");
+        Button manageProductsAndCategoriesButton = new Button("Products and Categories"); // Combined button for products and categories
         Button employeesButton = new Button("Employees");
         Button customersButton = new Button("Customers");
         Button ordersButton = new Button("Orders");
@@ -23,23 +24,25 @@ public class SideMenu extends VBox {
         Button auditLogsButton = new Button("Audit Logs");
         Button helpButton = new Button("Help");
 
-        // Add event handlers for button clicks
-        dashboardButton.setOnAction(e -> mainApp.showDashboard());
-        productsButton.setOnAction(e -> mainApp.showProducts());
-        employeesButton.setOnAction(e -> mainApp.showEmployees());
-        customersButton.setOnAction(e -> mainApp.showCustomers());
-        ordersButton.setOnAction(e -> mainApp.showOrders());
-        suppliersButton.setOnAction(e -> mainApp.showSuppliers());
-        reportsButton.setOnAction(e -> mainApp.showReports());
-        settingsButton.setOnAction(e -> mainApp.showSettings());
-        inventoryButton.setOnAction(e -> mainApp.showInventory());
-        auditLogsButton.setOnAction(e -> mainApp.showAuditLogs());
-        helpButton.setOnAction(e -> mainApp.showHelp());
+        // Set up event handlers for each button
+        setUpButtonAction(dashboardButton, mainApp::showDashboard);
+        setUpButtonAction(productsButton, mainApp::showProducts);
+        setUpButtonAction(manageProductsAndCategoriesButton, mainApp::showProductAndCategoryManagement); // Use the new method to show products and categories
+        setUpButtonAction(employeesButton, mainApp::showEmployees);
+        setUpButtonAction(customersButton, mainApp::showCustomers);
+        setUpButtonAction(ordersButton, mainApp::showOrders);
+        setUpButtonAction(suppliersButton, mainApp::showSuppliers);
+        setUpButtonAction(reportsButton, mainApp::showReports);
+        setUpButtonAction(settingsButton, mainApp::showSettings);
+        setUpButtonAction(inventoryButton, mainApp::showInventory);
+        setUpButtonAction(auditLogsButton, mainApp::showAuditLogs);
+        setUpButtonAction(helpButton, mainApp::showHelp);
 
         // Add buttons to the side menu
         this.getChildren().addAll(
                 dashboardButton,
                 productsButton,
+                manageProductsAndCategoriesButton, // The button for managing both products and categories
                 employeesButton,
                 customersButton,
                 ordersButton,
@@ -50,5 +53,10 @@ public class SideMenu extends VBox {
                 auditLogsButton,
                 helpButton
         );
+    }
+
+    // Helper method to reduce redundancy
+    private void setUpButtonAction(Button button, Runnable action) {
+        button.setOnAction(e -> action.run());
     }
 }

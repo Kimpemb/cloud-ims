@@ -1,9 +1,12 @@
 package com.joshuawilliams.ims.ui;
 
 import com.joshuawilliams.ims.database.DatabaseConnection;
+import com.joshuawilliams.ims.dao.CategoryDao;
+
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ListView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -19,6 +22,10 @@ public class MainApp extends Application {
     private BorderPane mainLayout;
     private StackPane contentArea;
     private Connection connection;
+    private ListView<String> categoryListView;
+    private CategoryDao categoryDao;
+
+
 
     @Override
     public void start(Stage primaryStage) {
@@ -43,6 +50,10 @@ public class MainApp extends Application {
         contentArea.getChildren().clear();
         contentArea.getChildren().add(addProductButton);
 
+        // Set the initial view (e.g., Add Product button or Dashboard)
+        showDashboard();  // You can set this to show an initial dashboard or default screen
+
+
         // Create the scene
         Scene scene = new Scene(mainLayout, 800, 600);
         primaryStage.setTitle("Inventory Management System");
@@ -64,25 +75,6 @@ public class MainApp extends Application {
         AddProductDialog.show(primaryStage, connection, this::insertProduct); // Pass the connection and insertProduct method
     }
 
-    // Method to view all products
-    public void viewAllProducts() {
-        String query = "SELECT * FROM products";
-
-        try (Statement stmt = connection.createStatement(); ResultSet rs = stmt.executeQuery(query)) {
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String name = rs.getString("name");
-                double price = rs.getDouble("price");
-                int quantity = rs.getInt("quantity");
-                int categoryId = rs.getInt("category_id");
-
-                // Print the product details (for testing/debugging purposes)
-                System.out.println("ID: " + id + ", Name: " + name + ", Price: " + price + ", Quantity: " + quantity + ", Category ID: " + categoryId);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 
     // Method to insert a new product
     public void insertProduct(String name, double price, int quantity, int categoryId) {
@@ -135,6 +127,31 @@ public class MainApp extends Application {
         contentArea.getChildren().clear();
         contentArea.getChildren().add(new ProductsView(connection, this)); // Pass connection and this (MainApp instance)
     }
+
+    public void showCategoryManagement() {
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(new CategoryView(connection, this)); // Pass both connection and this (MainApp)
+        Runnable onCategoryAdded = () -> refreshCategoryList();
+        AddCategoryDialog addCategoryDialog = new AddCategoryDialog(connection, onCategoryAdded);
+        addCategoryDialog.show();
+    }
+
+    // Method to refresh the category list (assuming you have a ListView or TableView for categories)
+    private void refreshCategoryList() {
+        categoryListView.getItems().clear(); // Clear existing items
+        categoryDao.getAllCategories().forEach(category -> categoryListView.getItems().add(category.getName())); // Add categories to the list
+    }
+
+
+    public void showProductAndCategoryManagement() {
+        contentArea.getChildren().clear(); // Clear the existing content
+        contentArea.getChildren().add(new ProductAndCategoryView(connection, this)); // Pass both the connection and MainApp instance
+    }
+
+
+
+
+
 
 
     public void showEmployees() {

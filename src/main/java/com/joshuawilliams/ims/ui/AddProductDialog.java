@@ -1,5 +1,10 @@
 package com.joshuawilliams.ims.ui;
 
+import com.joshuawilliams.ims.dao.CategoryDao;
+import com.joshuawilliams.ims.model.Category;
+import com.joshuawilliams.ims.utils.CategoryUtils;
+
+
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -10,10 +15,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+import java.util.List;  // Import List from java.util
+
+
 public class AddProductDialog {
 
-    public static void show(Stage ownerStage, Connection connection, ProductInsertionCallback callback) {
-        // Create a new window for the dialog
+    public static void show(Stage ownerStage, Connection connection, ProductInsertCallback callback) {
         Stage dialogStage = new Stage();
         dialogStage.initOwner(ownerStage);
         dialogStage.setTitle("Add New Product");
@@ -22,8 +29,8 @@ public class AddProductDialog {
         Label nameLabel = new Label("Product Name:");
         TextField nameField = new TextField();
 
-        Label categoryLabel = new Label("Category ID:");
-        TextField categoryField = new TextField();
+        Label categoryLabel = new Label("Category:");
+        ComboBox<String> categoryDropdown = new ComboBox<>();
 
         Label priceLabel = new Label("Price:");
         TextField priceField = new TextField();
@@ -45,13 +52,16 @@ public class AddProductDialog {
         gridPane.add(nameLabel, 0, 0);
         gridPane.add(nameField, 1, 0);
         gridPane.add(categoryLabel, 0, 1);
-        gridPane.add(categoryField, 1, 1);
+        gridPane.add(categoryDropdown, 1, 1);
         gridPane.add(priceLabel, 0, 2);
         gridPane.add(priceField, 1, 2);
         gridPane.add(quantityLabel, 0, 3);
         gridPane.add(quantityField, 1, 3);
         gridPane.add(submitButton, 0, 4);
         gridPane.add(cancelButton, 1, 4);
+
+        // Load categories into the dropdown
+        loadCategoriesIntoDropdown(connection, categoryDropdown);
 
         // Set up the scene
         Scene dialogScene = new Scene(gridPane, 400, 300);
@@ -62,45 +72,63 @@ public class AddProductDialog {
 
         submitButton.setOnAction(e -> {
             // Validate inputs and submit data
-            if (validateInputs(nameField, categoryField, priceField, quantityField)) {
-                // Get values from the fields
+            if (validateInputs(nameField, categoryDropdown, priceField, quantityField)) {
                 String name = nameField.getText();
                 double price = Double.parseDouble(priceField.getText());
                 int quantity = Integer.parseInt(quantityField.getText());
-                int categoryId = Integer.parseInt(categoryField.getText());
+                String categoryName = categoryDropdown.getValue();
 
-                // Call the callback to insert the product
-                callback.insertProduct(name, price, quantity, categoryId);
+                // Get the category ID from category name
+                int categoryId = CategoryUtils.getCategoryIdFromName(connection, categoryName);
 
-                dialogStage.close(); // Close the dialog after adding the product
+                if (categoryId != -1) {
+                    callback.insertProduct(name, price, quantity, categoryId); // Pass categoryId as int
+                    dialogStage.close(); // Close the dialog after adding the product
+                } else {
+                    showError("Category not found.");
+                }
             } else {
-                // Show a simple alert for validation failure
                 showError("Please fill in all fields with valid data.");
             }
         });
 
-        // Show the dialog
         dialogStage.show();
     }
 
-    // Validate inputs
-    private static boolean validateInputs(TextField name, TextField category, TextField price, TextField quantity) {
-        if (name.getText().isEmpty() || category.getText().isEmpty() || price.getText().isEmpty() || quantity.getText().isEmpty()) {
+    private static void loadCategoriesIntoDropdown(Connection connection, ComboBox<String> categoryDropdown) {
+        CategoryDao categoryDao = new CategoryDao(connection);  // Pass the connection to the CategoryDao constructor
+        List<Category> categories = categoryDao.getAllCategories();  // Get all categories from the database
+
+        categoryDropdown.getItems().clear();  // Clear any existing items in the dropdown
+
+        // Extract category names using a stream and add them to the dropdown
+        categoryDropdown.getItems().addAll(
+                categories.stream()
+                        .map(Category::getName)  // Map Category objects to their names
+                        .toList()                // Collect the names into a List
+        );
+    }
+
+
+
+
+
+
+    private static boolean validateInputs(TextField name, ComboBox<String> category, TextField price, TextField quantity) {
+        if (name.getText().isEmpty() || category.getValue() == null || price.getText().isEmpty() || quantity.getText().isEmpty()) {
             return false;
         }
 
         try {
-            Double.parseDouble(price.getText()); // Check if price is a valid number
-            Integer.parseInt(quantity.getText()); // Check if quantity is a valid integer
-            Integer.parseInt(category.getText()); // Check if category is a valid integer
+            Double.parseDouble(price.getText());
+            Integer.parseInt(quantity.getText());
         } catch (NumberFormatException e) {
-            return false; // If any of the fields are not valid numbers
+            return false;
         }
 
         return true;
     }
 
-    // Show error message in case of validation failure
     private static void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("Input Error");
@@ -110,7 +138,7 @@ public class AddProductDialog {
     }
 
     // Interface for callback
-    public interface ProductInsertionCallback {
+    public interface ProductInsertCallback {
         void insertProduct(String name, double price, int quantity, int categoryId);
     }
 }
