@@ -1,9 +1,10 @@
 package com.joshuawilliams.ims.ui;
 
-import com.joshuawilliams.ims.dao.CategoryDao;
-import com.joshuawilliams.ims.model.Category;
+import com.joshuawilliams.ims.service.CategoryService;
+import com.joshuawilliams.ims.service.ProductService;
 import com.joshuawilliams.ims.utils.CategoryUtils;
-
+import com.joshuawilliams.ims.model.Category;
+import com.joshuawilliams.ims.dao.CategoryDao;
 
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -11,12 +12,9 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-
-import java.util.List;  // Import List from java.util
-
+import java.sql.Connection;
+import java.util.List;
 
 public class AddProductDialog {
 
@@ -30,8 +28,9 @@ public class AddProductDialog {
         TextField nameField = new TextField();
 
         Label categoryLabel = new Label("Category:");
-        ComboBox<String> categoryDropdown = new ComboBox<>();
+        ComboBox<Category> categoryDropdown = new ComboBox<>();  // Create ComboBox<Category>
 
+        // Create other fields (price, quantity, etc.)
         Label priceLabel = new Label("Price:");
         TextField priceField = new TextField();
 
@@ -60,8 +59,37 @@ public class AddProductDialog {
         gridPane.add(submitButton, 0, 4);
         gridPane.add(cancelButton, 1, 4);
 
-        // Load categories into the dropdown
-        loadCategoriesIntoDropdown(connection, categoryDropdown);
+        // Set up ComboBox to display category names
+        categoryDropdown.setCellFactory(param -> new ListCell<Category>() {
+            @Override
+            protected void updateItem(Category item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item == null || empty) {
+                    setText(null);
+                } else {
+                    setText(item.getName());  // Display category name
+                }
+            }
+        });
+
+        categoryDropdown.setButtonCell(new ListCell<Category>() {
+            @Override
+            protected void updateItem(Category item, boolean empty) {
+                super.updateItem(item, empty);
+                if (item == null || empty) {
+                    setText(null);
+                } else {
+                    setText(item.getName());  // Display category name in the dropdown button
+                }
+            }
+        });
+
+        // Create CategoryService instance
+        CategoryService categoryService = new CategoryService(connection);
+
+// Load categories into the dropdown using CategoryService
+        categoryService.loadCategoriesIntoDropdown(categoryDropdown);
+
 
         // Set up the scene
         Scene dialogScene = new Scene(gridPane, 400, 300);
@@ -76,14 +104,20 @@ public class AddProductDialog {
                 String name = nameField.getText();
                 double price = Double.parseDouble(priceField.getText());
                 int quantity = Integer.parseInt(quantityField.getText());
-                String categoryName = categoryDropdown.getValue();
+                Category selectedCategory = categoryDropdown.getValue();
 
-                // Get the category ID from category name
-                int categoryId = CategoryUtils.getCategoryIdFromName(connection, categoryName);
+                if (selectedCategory != null) {
+                    int categoryId = selectedCategory.getId(); // Get category ID from selected Category object
 
-                if (categoryId != -1) {
-                    callback.insertProduct(name, price, quantity, categoryId); // Pass categoryId as int
-                    dialogStage.close(); // Close the dialog after adding the product
+                    // Call ProductService to add the product
+                    ProductService productService = new ProductService(connection);
+                    boolean success = productService.addProduct(name, price, quantity, categoryId);
+                    if (success) {
+                        callback.insertProduct(name, price, quantity, categoryId);
+                        dialogStage.close(); // Close the dialog after adding the product
+                    } else {
+                        showError("Product could not be added.");
+                    }
                 } else {
                     showError("Category not found.");
                 }
@@ -95,26 +129,13 @@ public class AddProductDialog {
         dialogStage.show();
     }
 
-    private static void loadCategoriesIntoDropdown(Connection connection, ComboBox<String> categoryDropdown) {
-        CategoryDao categoryDao = new CategoryDao(connection);  // Pass the connection to the CategoryDao constructor
-        List<Category> categories = categoryDao.getAllCategories();  // Get all categories from the database
-
-        categoryDropdown.getItems().clear();  // Clear any existing items in the dropdown
-
-        // Extract category names using a stream and add them to the dropdown
-        categoryDropdown.getItems().addAll(
-                categories.stream()
-                        .map(Category::getName)  // Map Category objects to their names
-                        .toList()                // Collect the names into a List
-        );
-    }
 
 
 
 
 
 
-    private static boolean validateInputs(TextField name, ComboBox<String> category, TextField price, TextField quantity) {
+    private static boolean validateInputs(TextField name, ComboBox<Category> category, TextField price, TextField quantity) {
         if (name.getText().isEmpty() || category.getValue() == null || price.getText().isEmpty() || quantity.getText().isEmpty()) {
             return false;
         }
@@ -128,6 +149,7 @@ public class AddProductDialog {
 
         return true;
     }
+
 
     private static void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);

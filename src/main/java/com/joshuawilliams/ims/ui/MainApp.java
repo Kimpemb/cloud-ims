@@ -2,59 +2,56 @@ package com.joshuawilliams.ims.ui;
 
 import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.dao.CategoryDao;
+import com.joshuawilliams.ims.service.ProductService;
+
 
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ListView;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Button;
+import javafx.scene.layout.BorderPane;
+
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 public class MainApp extends Application {
 
     private BorderPane mainLayout;
     private StackPane contentArea;
     private Connection connection;
+    private ProductService productService;  // ProductService instance
     private ListView<String> categoryListView;
     private CategoryDao categoryDao;
-
+    private TextField productNameInput; // Declare as a class variable
 
 
     @Override
     public void start(Stage primaryStage) {
         // Establish the database connection
         connection = DatabaseConnection.getConnection();
+        productService = new ProductService(connection);
 
-        // Create the main layout
+        // Initialize the main layout
         mainLayout = new BorderPane();
-
-        // Create the content area (center of the layout)
         contentArea = new StackPane();
         mainLayout.setCenter(contentArea);
 
-        // Create the SideMenu and pass the MainApp instance
+        // Add the SideMenu
         SideMenu sideMenu = new SideMenu(this);
         mainLayout.setLeft(sideMenu);
 
-        // Add "Add Product" button to the center
-        Button addProductButton = new Button("Add New Product");
-        addProductButton.setOnAction(event -> openAddProductDialog(primaryStage));
+        // Set the initial view (e.g., Dashboard)
+        showDashboard();
 
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(addProductButton);
-
-        // Set the initial view (e.g., Add Product button or Dashboard)
-        showDashboard();  // You can set this to show an initial dashboard or default screen
-
-
-        // Create the scene
+        // Set up the primary stage
         Scene scene = new Scene(mainLayout, 800, 600);
         primaryStage.setTitle("Inventory Management System");
         primaryStage.setScene(scene);
@@ -70,21 +67,18 @@ public class MainApp extends Application {
         }
     }
 
-    // Method to open the AddProductDialog
+    // Method to open the Add Product dialog
     private void openAddProductDialog(Stage primaryStage) {
-        AddProductDialog.show(primaryStage, connection, this::insertProduct); // Pass the connection and insertProduct method
+        AddProductDialog.show(primaryStage, connection, this::insertProduct);
     }
-
 
     // Method to insert a new product
     public void insertProduct(String name, double price, int quantity, int categoryId) {
-        // Check if the product already exists
-        if (isProductExists(name)) {
+        if (productService.doesProductExist(name)) {
             System.out.println("Product already exists: " + name);
-            return; // If the product already exists, we exit
+            return;
         }
 
-        // Insert the new product
         String insertProductSQL = "INSERT INTO products (name, price, quantity, category_id) VALUES (?, ?, ?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertProductSQL)) {
             stmt.setString(1, name);
@@ -92,32 +86,18 @@ public class MainApp extends Application {
             stmt.setInt(3, quantity);
             stmt.setInt(4, categoryId);
 
-            int rowsAffected = stmt.executeUpdate(); // Execute the insert query
+            int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
-                System.out.println("Product Added: " + name); // Log success
+                System.out.println("Product added: " + name);
             } else {
                 System.out.println("Failed to add the product: " + name);
             }
         } catch (SQLException e) {
-            e.printStackTrace(); // Log errors during insertion
+            e.printStackTrace();
         }
     }
 
-    // Helper method to check if the product already exists in the database
-    private boolean isProductExists(String name) {
-        String checkProductSQL = "SELECT * FROM products WHERE name = ?";
-        try (PreparedStatement checkStmt = connection.prepareStatement(checkProductSQL)) {
-            checkStmt.setString(1, name);
-            try (ResultSet rs = checkStmt.executeQuery()) {
-                return rs.next(); // If a product is found, return true
-            }
-        } catch (SQLException e) {
-            e.printStackTrace(); // Log errors during the existence check
-        }
-        return false; // Return false if no product is found
-    }
-
-    // Methods to switch between views (all clearing the content area)
+    // Methods to switch between views
     public void showDashboard() {
         contentArea.getChildren().clear();
         contentArea.getChildren().add(new DashboardView());
@@ -125,34 +105,17 @@ public class MainApp extends Application {
 
     public void showProducts() {
         contentArea.getChildren().clear();
-        contentArea.getChildren().add(new ProductsView(connection, this)); // Pass connection and this (MainApp instance)
+        contentArea.getChildren().add(new ProductsView(connection, this));
+    }
+    public void showProductAndCategoryManagement() {
+        contentArea.getChildren().clear(); // Clear the current content in the center area
+        contentArea.getChildren().add(new ProductAndCategoryView(connection, this)); // Load the Product and Category management view
     }
 
     public void showCategoryManagement() {
         contentArea.getChildren().clear();
-        contentArea.getChildren().add(new CategoryView(connection, this)); // Pass both connection and this (MainApp)
-        Runnable onCategoryAdded = () -> refreshCategoryList();
-        AddCategoryDialog addCategoryDialog = new AddCategoryDialog(connection, onCategoryAdded);
-        addCategoryDialog.show();
+        contentArea.getChildren().add(new CategoryView(connection, this));
     }
-
-    // Method to refresh the category list (assuming you have a ListView or TableView for categories)
-    private void refreshCategoryList() {
-        categoryListView.getItems().clear(); // Clear existing items
-        categoryDao.getAllCategories().forEach(category -> categoryListView.getItems().add(category.getName())); // Add categories to the list
-    }
-
-
-    public void showProductAndCategoryManagement() {
-        contentArea.getChildren().clear(); // Clear the existing content
-        contentArea.getChildren().add(new ProductAndCategoryView(connection, this)); // Pass both the connection and MainApp instance
-    }
-
-
-
-
-
-
 
     public void showEmployees() {
         contentArea.getChildren().clear();

@@ -1,9 +1,14 @@
 package com.joshuawilliams.ims.dao;
 
 import com.joshuawilliams.ims.model.Category;
+import com.joshuawilliams.ims.database.DatabaseConnection;
+
 import java.sql.*;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+
+
 
 public class CategoryDao {
     private Connection connection;
@@ -31,8 +36,6 @@ public class CategoryDao {
         return categories;
     }
 
-
-
     public void addCategory(Category category) {
         // Check if the category already exists
         if (doesCategoryExist(category.getName())) {
@@ -49,16 +52,40 @@ public class CategoryDao {
     }
 
     public boolean doesCategoryExist(String categoryName) {
-        String query = "SELECT COUNT(*) FROM categories WHERE name = ?";
+        String query = "SELECT COUNT(*) FROM categories WHERE LOWER(name) = LOWER(?)";
         try (PreparedStatement statement = connection.prepareStatement(query)) {
             statement.setString(1, categoryName);
             ResultSet resultSet = statement.executeQuery();
-            if (resultSet.next()) {
-                return resultSet.getInt(1) > 0;  // Return true if category exists
+            resultSet.next();
+            int count = resultSet.getInt(1);
+            return count > 0;  // Return true if the category exists, false otherwise
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public List<Category> searchCategories(String searchQuery) {
+        String query = "SELECT * FROM categories WHERE LOWER(name) LIKE LOWER(?)";
+        List<Category> categories = new ArrayList<>();
+
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, "%" + searchQuery + "%");
+            ResultSet resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                Category category = new Category(
+                        resultSet.getInt("id"),
+                        resultSet.getString("name")
+                );
+                categories.add(category);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return false;
+
+        return categories;
     }
+
+
 }
