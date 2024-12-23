@@ -1,5 +1,7 @@
 package com.joshuawilliams.ims.model;
 
+import java.util.Objects;
+
 public class Product {
 
     private int id;
@@ -65,5 +67,29 @@ public class Product {
 
     public int getCategoryId() {
         return categoryId;
+    }
+
+    // Add toString method for easy display
+    @Override
+    public String toString() {
+        return "Product [id=" + id + ", name=" + name + ", price=" + price + ", quantity=" + quantity + ", categoryId=" + categoryId + "]";
+    }
+
+    // Override equals and hashCode for better handling in collections and comparisons
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Product product = (Product) obj;
+        return id == product.id &&
+                Double.compare(product.price, price) == 0 &&
+                quantity == product.quantity &&
+                categoryId == product.categoryId &&
+                name.equals(product.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name, price, quantity, categoryId);
     }
 }

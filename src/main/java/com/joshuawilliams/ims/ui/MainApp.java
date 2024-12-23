@@ -7,9 +7,7 @@ import com.joshuawilliams.ims.service.ProductService;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -31,15 +29,33 @@ public class MainApp extends Application {
     private ListView<String> categoryListView;
     private CategoryDao categoryDao;
     private TextField productNameInput; // Declare as a class variable
+    private TabPane tabPane;
+    private Tab categoryManagementTab;
+    private Tab categoryTab;
+
 
 
     @Override
     public void start(Stage primaryStage) {
         // Establish the database connection
         connection = DatabaseConnection.getConnection();
+
+        // Initialize productService with the established connection
         productService = new ProductService(connection);
 
-        // Initialize the main layout
+        // Create ProductAndCategoryView and pass the connection and MainApp instance
+        ProductAndCategoryView productAndCategoryView = new ProductAndCategoryView(connection, this);
+
+        // Get the TabPane from the ProductAndCategoryView
+        tabPane = productAndCategoryView.getTabPane();
+
+        // Get the Category Management Tab from the ProductAndCategoryView
+        Tab categoryManagementTab = productAndCategoryView.getCategoryTab();
+        categoryTab = productAndCategoryView.getCategoryTab();
+
+
+
+        // Set up the main layout
         mainLayout = new BorderPane();
         contentArea = new StackPane();
         mainLayout.setCenter(contentArea);
@@ -47,6 +63,9 @@ public class MainApp extends Application {
         // Add the SideMenu
         SideMenu sideMenu = new SideMenu(this);
         mainLayout.setLeft(sideMenu);
+
+        // Add the ProductAndCategoryView to the layout
+        mainLayout.setCenter(productAndCategoryView);
 
         // Set the initial view (e.g., Dashboard)
         showDashboard();
@@ -56,6 +75,15 @@ public class MainApp extends Application {
         primaryStage.setTitle("Inventory Management System");
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    // Getter methods for tabPane and categoryTab
+    public TabPane getTabPane() {
+        return tabPane;
+    }
+
+    public Tab getCategoryTab() {
+        return categoryTab;
     }
 
     @Override
@@ -105,8 +133,10 @@ public class MainApp extends Application {
 
     public void showProducts() {
         contentArea.getChildren().clear();
-        contentArea.getChildren().add(new ProductsView(connection, this));
+        contentArea.getChildren().add(new ProductsView(connection, this, tabPane, categoryManagementTab));
     }
+
+
     public void showProductAndCategoryManagement() {
         contentArea.getChildren().clear(); // Clear the current content in the center area
         contentArea.getChildren().add(new ProductAndCategoryView(connection, this)); // Load the Product and Category management view

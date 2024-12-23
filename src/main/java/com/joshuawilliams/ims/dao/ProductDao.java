@@ -12,6 +12,13 @@ public class ProductDao {
     // Constructor accepting only connection
     public ProductDao(Connection connection) {
         this.connection = connection;
+
+        // Enable autocommit for automatic commits after every SQL statement
+        try {
+            this.connection.setAutoCommit(true);  // Enable autocommit
+        } catch (SQLException e) {
+            e.printStackTrace();  // Handle exception if autocommit fails
+        }
     }
 
     // Method to add a new product to the database
@@ -28,11 +35,11 @@ public class ProductDao {
             statement.setInt(3, product.getQuantity());
             statement.setInt(4, product.getCategoryId());
 
-            int rowsAffected = statement.executeUpdate();
-            return rowsAffected > 0;
+            int rowsAffected = statement.executeUpdate();  // Execute the query and get rows affected
+            return rowsAffected > 0;  // Return true if the product was added successfully
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
+            return false;  // Return false if an error occurs
         }
     }
 
@@ -78,7 +85,7 @@ public class ProductDao {
                         resultSet.getInt("quantity"),
                         resultSet.getInt("category_id")
                 );
-                products.add(product);
+                products.add(product);  // Add product to the list
             }
         } catch (SQLException e) {
             e.printStackTrace();
