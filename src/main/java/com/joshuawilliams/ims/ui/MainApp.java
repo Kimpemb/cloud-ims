@@ -33,7 +33,19 @@ public class MainApp extends Application {
     private Tab categoryManagementTab;
     private Tab categoryTab;
 
+    public MainApp() {
+        // Initialize the connection during MainApp instantiation
+        connection = DatabaseConnection.getConnection();
+    }
 
+    public Connection getConnection() {
+        return connection;
+    }
+
+    // Optional: Add a method to close the connection when the app shuts down
+    public void closeConnection() {
+        DatabaseConnection.closeConnection(connection);
+    }
 
     @Override
     public void start(Stage primaryStage) {
@@ -53,29 +65,27 @@ public class MainApp extends Application {
         Tab categoryManagementTab = productAndCategoryView.getCategoryTab();
         categoryTab = productAndCategoryView.getCategoryTab();
 
-
-
         // Set up the main layout
         mainLayout = new BorderPane();
         contentArea = new StackPane();
-        mainLayout.setCenter(contentArea);
+        mainLayout.setCenter(contentArea);  // The center area will hold dynamic content
 
         // Add the SideMenu
-        SideMenu sideMenu = new SideMenu(this);
-        mainLayout.setLeft(sideMenu);
+        SideMenu sideMenu = new SideMenu(this); // Pass MainApp and TabPane
+        mainLayout.setLeft(sideMenu);  // Side menu on the left
 
-        // Add the ProductAndCategoryView to the layout
-        mainLayout.setCenter(productAndCategoryView);
-
-        // Set the initial view (e.g., Dashboard)
-        showDashboard();
-
-        // Set up the primary stage
+        // Set up the primary stage scene and show it
         Scene scene = new Scene(mainLayout, 800, 600);
         primaryStage.setTitle("Inventory Management System");
         primaryStage.setScene(scene);
+
+        // Show the main layout with the default view (Dashboard)
+        showDashboard();  // Load the dashboard content initially
+
         primaryStage.show();
     }
+    
+
 
     // Getter methods for tabPane and categoryTab
     public TabPane getTabPane() {
@@ -95,10 +105,7 @@ public class MainApp extends Application {
         }
     }
 
-    // Method to open the Add Product dialog
-    private void openAddProductDialog(Stage primaryStage) {
-        AddProductDialog.show(primaryStage, connection, this::insertProduct);
-    }
+
 
     // Method to insert a new product
     public void insertProduct(String name, double price, int quantity, int categoryId) {
@@ -138,9 +145,10 @@ public class MainApp extends Application {
 
 
     public void showProductAndCategoryManagement() {
-        contentArea.getChildren().clear(); // Clear the current content in the center area
-        contentArea.getChildren().add(new ProductAndCategoryView(connection, this)); // Load the Product and Category management view
+        contentArea.getChildren().clear();  // Clear current content
+        contentArea.getChildren().add(new ProductAndCategoryView(connection, this));  // Add new view
     }
+
 
     public void showCategoryManagement() {
         contentArea.getChildren().clear();
@@ -193,6 +201,7 @@ public class MainApp extends Application {
     }
 
     public static void main(String[] args) {
-        launch(args);
+        launch(args); // Launches the JavaFX application lifecycle
     }
+
 }

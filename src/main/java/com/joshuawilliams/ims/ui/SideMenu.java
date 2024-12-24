@@ -23,9 +23,9 @@ public class SideMenu extends VBox {
         Button auditLogsButton = new Button("Audit Logs");
         Button helpButton = new Button("Help");
 
-        // Set up event handlers for each button
+        // Set up event handlers for each button using the MainApp methods
         setUpButtonAction(dashboardButton, mainApp::showDashboard);
-        setUpButtonAction(manageProductsAndCategoriesButton, mainApp::showProductAndCategoryManagement); // Use the new method to show products and categories
+        setUpButtonAction(manageProductsAndCategoriesButton, mainApp::showProductAndCategoryManagement);
         setUpButtonAction(employeesButton, mainApp::showEmployees);
         setUpButtonAction(customersButton, mainApp::showCustomers);
         setUpButtonAction(ordersButton, mainApp::showOrders);
@@ -39,7 +39,7 @@ public class SideMenu extends VBox {
         // Add buttons to the side menu
         this.getChildren().addAll(
                 dashboardButton,
-                manageProductsAndCategoriesButton, // The button for managing both products and categories
+                manageProductsAndCategoriesButton,
                 employeesButton,
                 customersButton,
                 ordersButton,

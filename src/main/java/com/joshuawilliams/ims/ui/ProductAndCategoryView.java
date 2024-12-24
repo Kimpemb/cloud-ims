@@ -11,27 +11,22 @@ public class ProductAndCategoryView extends VBox {
     private Tab categoryManagementTab;  // Declare this before using it
 
     public ProductAndCategoryView(Connection connection, MainApp mainApp) {
-        // Initialize TabPane
+        // Create the TabPane
         tabPane = new TabPane();
 
         // Tab for Category Management
-        categoryManagementTab = new Tab("Category Management");  // Initialize here
-        categoryManagementTab.setClosable(false); // Prevent users from closing the tab
-        categoryManagementTab.setContent(new CategoryView(connection, mainApp)); // Your existing Category view
+        categoryManagementTab = new Tab("Category Management");
+        categoryManagementTab.setClosable(false);
+        categoryManagementTab.setContent(new CategoryView(connection, mainApp));
 
         // Tab for Product Management
         Tab productTab = new Tab("Product Management");
-        productTab.setClosable(false); // Prevent users from closing the tab
-        productTab.setContent(new ProductsView(connection, mainApp, tabPane, categoryManagementTab)); // Pass the initialized categoryManagementTab
+        productTab.setClosable(false);
+        productTab.setContent(new ProductsView(connection, mainApp, tabPane, categoryManagementTab));
 
-        // Add tabs to TabPane
         tabPane.getTabs().addAll(productTab, categoryManagementTab);
 
-        // Set the default active tab to Product Management
-        tabPane.getSelectionModel().select(productTab);
-
-        // Ensure the TabPane takes the full height/width of the parent container
-        this.setSpacing(10); // Optional spacing between components
+        // Add TabPane to this view
         this.getChildren().add(tabPane);
     }
 
@@ -44,6 +39,7 @@ public class ProductAndCategoryView extends VBox {
     public Tab getCategoryManagementTab() {
         return categoryManagementTab;
     }
+
     public Tab getCategoryTab() {
         return tabPane.getTabs().stream()
                 .filter(tab -> "Category Management".equals(tab.getText()))
