@@ -22,7 +22,9 @@ public class ProductService {
     }
 
     // Method to add a product
+    // In ProductService
     public boolean addProduct(String name, double price, int quantity, int categoryId) {
+        // Validate input data
         if (name == null || name.trim().isEmpty() || price <= 0 || quantity <= 0 || categoryId <= 0) {
             System.out.println("Invalid input data.");
             return false;
@@ -37,9 +39,10 @@ public class ProductService {
         // Create Product object
         Product product = new Product(name, price, quantity, categoryId);
 
-        // Call the DAO method to add the product
+        // Call the DAO method to add the product to the database
         return productDao.addProduct(product);
     }
+
 
     // Method to check if a product exists
     public boolean doesProductExist(String name) {
@@ -98,10 +101,10 @@ public class ProductService {
 
 
     // Method to delete a product
-    public boolean deleteProduct(int productId) {
+    public boolean deleteProduct(Product product) {
         String sql = "DELETE FROM products WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, productId);
+            stmt.setInt(1, product.getId());  // Use product's ID
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
         } catch (SQLException e) {

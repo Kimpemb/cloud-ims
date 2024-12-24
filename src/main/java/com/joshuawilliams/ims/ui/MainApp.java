@@ -108,29 +108,17 @@ public class MainApp extends Application {
 
 
     // Method to insert a new product
+    // In MainApp
     public void insertProduct(String name, double price, int quantity, int categoryId) {
-        if (productService.doesProductExist(name)) {
-            System.out.println("Product already exists: " + name);
-            return;
-        }
-
-        String insertProductSQL = "INSERT INTO products (name, price, quantity, category_id) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(insertProductSQL)) {
-            stmt.setString(1, name);
-            stmt.setDouble(2, price);
-            stmt.setInt(3, quantity);
-            stmt.setInt(4, categoryId);
-
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Product added: " + name);
-            } else {
-                System.out.println("Failed to add the product: " + name);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        // Directly call the ProductService to add the product
+        boolean success = productService.addProduct(name, price, quantity, categoryId);
+        if (success) {
+            System.out.println("Product added: " + name);
+        } else {
+            System.out.println("Failed to add the product: " + name);
         }
     }
+
 
     // Methods to switch between views
     public void showDashboard() {
