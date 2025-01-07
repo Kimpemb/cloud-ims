@@ -3,7 +3,8 @@ package com.joshuawilliams.ims.ui;
 import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.dao.CategoryDao;
 import com.joshuawilliams.ims.service.ProductService;
-
+import com.joshuawilliams.ims.dao.EmployeeDao;
+import com.joshuawilliams.ims.service.EmployeeService;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -24,8 +25,10 @@ public class MainApp extends Application {
 
     private BorderPane mainLayout;
     private StackPane contentArea;
+    private Stage primaryStage; // Declare primaryStage at the class level
     private Connection connection;
     private ProductService productService;  // ProductService instance
+    private EmployeeService employeeService;
     private ListView<String> categoryListView;
     private CategoryDao categoryDao;
     private TextField productNameInput; // Declare as a class variable
@@ -47,13 +50,22 @@ public class MainApp extends Application {
         DatabaseConnection.closeConnection(connection);
     }
 
+
     @Override
     public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;
         // Establish the database connection
         connection = DatabaseConnection.getConnection();
 
         // Initialize productService with the established connection
         productService = new ProductService(connection);
+
+        // Initialize EmployeeDao and EmployeeService
+        EmployeeDao employeeDao = new EmployeeDao(connection);
+        EmployeeService employeeService = new EmployeeService(employeeDao);
+
+        // Initialize Employee Management View
+        EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);
 
         // Create ProductAndCategoryView and pass the connection and MainApp instance
         ProductAndCategoryView productAndCategoryView = new ProductAndCategoryView(connection, this);
@@ -62,16 +74,15 @@ public class MainApp extends Application {
         tabPane = productAndCategoryView.getTabPane();
 
         // Get the Category Management Tab from the ProductAndCategoryView
-        Tab categoryManagementTab = productAndCategoryView.getCategoryTab();
         categoryTab = productAndCategoryView.getCategoryTab();
 
-        // Set up the main layout
+        // Setup main layout
         mainLayout = new BorderPane();
         contentArea = new StackPane();
         mainLayout.setCenter(contentArea);  // The center area will hold dynamic content
 
         // Add the SideMenu
-        SideMenu sideMenu = new SideMenu(this); // Pass MainApp and TabPane
+        SideMenu sideMenu = new SideMenu(this); // Pass MainApp instance
         mainLayout.setLeft(sideMenu);  // Side menu on the left
 
         // Set up the primary stage scene and show it
@@ -84,7 +95,12 @@ public class MainApp extends Application {
 
         primaryStage.show();
     }
-    
+
+
+
+
+
+
 
 
     // Getter methods for tabPane and categoryTab
@@ -143,10 +159,16 @@ public class MainApp extends Application {
         contentArea.getChildren().add(new CategoryView(connection, this));
     }
 
-    public void showEmployees() {
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(new EmployeesView());
-    }
+
+        public void showEmployees() { // Removed Stage parameter
+            EmployeeDao employeeDao = new EmployeeDao(connection);
+            EmployeeService employeeService = new EmployeeService(employeeDao);
+            EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);
+            contentArea.getChildren().clear();
+            contentArea.getChildren().add(employeeManagementView.createEmployeeManagementLayout(primaryStage)); // Use stored primaryStage
+        }
+
+
 
     public void showCustomers() {
         contentArea.getChildren().clear();
