@@ -160,13 +160,15 @@ public class MainApp extends Application {
     }
 
 
-        public void showEmployees() { // Removed Stage parameter
-            EmployeeDao employeeDao = new EmployeeDao(connection);
-            EmployeeService employeeService = new EmployeeService(employeeDao);
-            EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);
-            contentArea.getChildren().clear();
-            contentArea.getChildren().add(employeeManagementView.createEmployeeManagementLayout(primaryStage)); // Use stored primaryStage
-        }
+    public void showEmployees() {
+        EmployeeDao employeeDao = new EmployeeDao(connection);
+        EmployeeService employeeService = new EmployeeService(employeeDao);
+        EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);
+
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(employeeManagementView.createEmployeeManagementLayout(primaryStage)); // Use stored primaryStage
+    }
+
 
 
 

@@ -2,7 +2,6 @@ package com.joshuawilliams.ims.model;
 
 import java.sql.Date; // Import java.sql.Date
 import javafx.beans.property.*;
-
 public class Employee {
     private StringProperty id;
     private StringProperty name;
@@ -11,7 +10,7 @@ public class Employee {
     private StringProperty phoneNumber;
     private StringProperty email;
     private StringProperty status;
-    private ObjectProperty<Date> dateOfBirth; // Change this to java.sql.Date
+    private ObjectProperty<Date> dateOfBirth; // java.sql.Date
     private ObjectProperty<Date> hireDate;
     private StringProperty address;
     private StringProperty managerId;
@@ -44,6 +43,28 @@ public class Employee {
         this.nationalId = new SimpleStringProperty(nationalId);
     }
 
+    // No-argument constructor
+    // No-argument constructor for flexibility in object creation (e.g., frameworks, collections),
+// and parameterized constructor for convenient, direct initialization with values.
+
+    public Employee() {
+        this.id = new SimpleStringProperty();
+        this.name = new SimpleStringProperty();
+        this.role = new SimpleStringProperty();
+        this.department = new SimpleStringProperty();
+        this.phoneNumber = new SimpleStringProperty();
+        this.email = new SimpleStringProperty();
+        this.status = new SimpleStringProperty();
+        this.dateOfBirth = new SimpleObjectProperty<>();
+        this.hireDate = new SimpleObjectProperty<>();
+        this.address = new SimpleStringProperty();
+        this.managerId = new SimpleStringProperty();
+        this.salary = new SimpleDoubleProperty();
+        this.performanceReview = new SimpleStringProperty();
+        this.employmentType = new SimpleStringProperty();
+        this.emergencyContact = new SimpleStringProperty();
+        this.nationalId = new SimpleStringProperty();
+    }
     // Getters and Setters
     public String getId() {
         return id.get();

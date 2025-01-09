@@ -1,15 +1,20 @@
 package com.joshuawilliams.ims.dao;
 
+import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.model.Employee;
+import com.joshuawilliams.ims.utils.UIHelper;
+import javafx.scene.control.Alert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
-import java.util.logging.Level;
-
+import java.util.Optional;
 
 public class EmployeeDao {
-    private static final Logger logger = Logger.getLogger(EmployeeDao.class.getName());
+    // Use SLF4J LoggerFactory for logging
+    public static final Logger logger = LoggerFactory.getLogger(EmployeeDao.class);
     private final Connection connection;
 
     public EmployeeDao(Connection connection) {
@@ -25,34 +30,58 @@ public class EmployeeDao {
              ResultSet rs = stmt.executeQuery(query)) {
 
             while (rs.next()) {
-                Employee employee = new Employee(
-                        rs.getString("id"),
-                        rs.getString("name"),
-                        rs.getString("role_id"),
-                        rs.getString("department_id"),
-                        rs.getString("phone_number"),
-                        rs.getString("email"),
-                        rs.getString("status"),
-                        rs.getDate("date_of_birth"),
-                        rs.getDate("hire_date"),
-                        rs.getString("address"),
-                        rs.getString("manager_id"),
-                        rs.getDouble("salary"),
-                        rs.getString("performance_review"),
-                        rs.getString("employment_type"),
-                        rs.getString("emergency_contact"),
-                        rs.getString("national_id")
-                );
-                employees.add(employee);
+                employees.add(mapResultSetToEmployee(rs));
             }
+
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Error fetching employees from database: ", e); // Log the exception with error level
         }
 
         return employees;
     }
 
-    // Add a new employee
+    public Optional<Employee> getEmployeeById(String employeeId) {
+        String query = "SELECT * FROM employees WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setString(1, employeeId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapResultSetToEmployee(rs));
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Error fetching employee by ID: {}", employeeId, e);
+        }
+        return Optional.empty(); // Return empty if no employee found
+    }
+
+    // Helper method to map ResultSet to Employee object
+    private Employee mapResultSetToEmployee(ResultSet rs) throws SQLException {
+        return new Employee(
+                rs.getString("id"),
+                rs.getString("name"),
+                rs.getString("role_id"),
+                rs.getString("department_id"),
+                rs.getString("phone_number"),
+                rs.getString("email"),
+                rs.getString("status"),
+                rs.getDate("date_of_birth"),
+                rs.getDate("hire_date"),
+                rs.getString("address"),
+                rs.getString("manager_id"),
+                rs.getDouble("salary"),
+                rs.getString("performance_review"),
+                rs.getString("employment_type"),
+                rs.getString("emergency_contact"),
+                rs.getString("national_id")
+        );
+    }
+
+
+
+
+
+// Add a new employee
     // Add a new employee
     public void addEmployee(Employee employee) {
         String query = "INSERT INTO employees (name, department_id, role_id, email, salary, date_of_birth, hire_date, " +
@@ -128,7 +157,8 @@ public class EmployeeDao {
             stmt.executeUpdate();
             logger.info("Query executed successfully. Employee added.");
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error occurred while adding a new employee: " + e.getMessage(), e);
+            // Using SLF4J error logging
+            logger.error("Error occurred while adding a new employee: {}", e.getMessage(), e);
             throw new RuntimeException("Error adding employee: " + e.getMessage(), e);
         }
     }
@@ -136,88 +166,85 @@ public class EmployeeDao {
 
 
     // Update an existing employee
-    // Update an existing employee
     public void updateEmployee(Employee employee) {
         String query = "UPDATE employees SET name = ?, department_id = ?, role_id = ?, email = ?, salary = ?, date_of_birth = ?, " +
                 "hire_date = ?, address = ?, manager_id = ?, phone_number = ?, performance_review = ?, emergency_contact = ?, " +
                 "national_id = ?, status = ?, employment_type = ? WHERE id = ?";
 
-        logger.info("Initiating the process to update employee with ID: " + employee.getId());
+        logger.info("Initiating the process to update employee with ID: {}", employee.getId());
 
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             // Log query structure once
-            logger.fine("SQL Query: " + query);
+            logger.debug("SQL Query: {}", query);
 
             // Set query parameters and log each parameter
             stmt.setString(1, employee.getName());
-            logger.fine("Set Parameter 1 (Name): " + employee.getName());
+            logger.debug("Set Parameter 1 (Name): {}", employee.getName());
 
             stmt.setString(2, employee.getDepartment());
-            logger.fine("Set Parameter 2 (Department ID): " + employee.getDepartment());
+            logger.debug("Set Parameter 2 (Department ID): {}", employee.getDepartment());
 
             stmt.setString(3, employee.getRole());
-            logger.fine("Set Parameter 3 (Role ID): " + employee.getRole());
+            logger.debug("Set Parameter 3 (Role ID): {}", employee.getRole());
 
             stmt.setString(4, employee.getEmail());
-            logger.fine("Set Parameter 4 (Email): " + employee.getEmail());
+            logger.debug("Set Parameter 4 (Email): {}", employee.getEmail());
 
             stmt.setDouble(5, employee.getSalary());
-            logger.fine("Set Parameter 5 (Salary): " + employee.getSalary());
+            logger.debug("Set Parameter 5 (Salary): {}", employee.getSalary());
 
             // Convert java.util.Date to java.sql.Date for Date of Birth
             java.util.Date utilDateOfBirth = employee.getDateOfBirth();  // Get java.util.Date
             java.sql.Date sqlDateOfBirth = (utilDateOfBirth != null) ? new java.sql.Date(utilDateOfBirth.getTime()) : null;
             stmt.setDate(6, sqlDateOfBirth);
-            logger.fine("Set Parameter 6 (Date of Birth): " + (utilDateOfBirth != null ? utilDateOfBirth.toString() : "null"));
+            logger.debug("Set Parameter 6 (Date of Birth): {}", (utilDateOfBirth != null ? utilDateOfBirth.toString() : "null"));
 
             // Convert java.util.Date to java.sql.Date for Hire Date
             java.util.Date utilHireDate = employee.getHireDate();  // Get java.util.Date
             java.sql.Date sqlHireDate = (utilHireDate != null) ? new java.sql.Date(utilHireDate.getTime()) : null;
             stmt.setDate(7, sqlHireDate);
-            logger.fine("Set Parameter 7 (Hire Date): " + (utilHireDate != null ? utilHireDate.toString() : "null"));
+            logger.debug("Set Parameter 7 (Hire Date): {}", (utilHireDate != null ? utilHireDate.toString() : "null"));
 
             stmt.setString(8, employee.getAddress());
-            logger.fine("Set Parameter 8 (Address): " + employee.getAddress());
+            logger.debug("Set Parameter 8 (Address): {}", employee.getAddress());
 
             stmt.setString(9, employee.getManagerId());
-            logger.fine("Set Parameter 9 (Manager ID): " + employee.getManagerId());
+            logger.debug("Set Parameter 9 (Manager ID): {}", employee.getManagerId());
 
             stmt.setString(10, employee.getPhoneNumber());
-            logger.fine("Set Parameter 10 (Phone Number): " + employee.getPhoneNumber());
+            logger.debug("Set Parameter 10 (Phone Number): {}", employee.getPhoneNumber());
 
             stmt.setString(11, employee.getPerformanceReview());
-            logger.fine("Set Parameter 11 (Performance Review): " + employee.getPerformanceReview());
+            logger.debug("Set Parameter 11 (Performance Review): {}", employee.getPerformanceReview());
 
             stmt.setString(12, employee.getEmergencyContact());
-            logger.fine("Set Parameter 12 (Emergency Contact): " + employee.getEmergencyContact());
+            logger.debug("Set Parameter 12 (Emergency Contact): {}", employee.getEmergencyContact());
 
             stmt.setString(13, employee.getNationalId());
-            logger.fine("Set Parameter 13 (National ID): " + employee.getNationalId());
+            logger.debug("Set Parameter 13 (National ID): {}", employee.getNationalId());
 
             stmt.setString(14, employee.getStatus());
-            logger.fine("Set Parameter 14 (Status): " + employee.getStatus());
+            logger.debug("Set Parameter 14 (Status): {}", employee.getStatus());
 
             stmt.setString(15, employee.getEmploymentType());
-            logger.fine("Set Parameter 15 (Employment Type): " + employee.getEmploymentType());
+            logger.debug("Set Parameter 15 (Employment Type): {}", employee.getEmploymentType());
 
             stmt.setString(16, employee.getId()); // Assuming employee ID is a String
-            logger.fine("Set Parameter 16 (Employee ID): " + employee.getId());
+            logger.debug("Set Parameter 16 (Employee ID): {}", employee.getId());
 
             // Execute the update
-            logger.info("Executing update for employee with ID: " + employee.getId());
+            logger.info("Executing update for employee with ID: {}", employee.getId());
             int rowsUpdated = stmt.executeUpdate();
             if (rowsUpdated > 0) {
-                logger.info("Employee with ID: " + employee.getId() + " updated successfully.");
+                logger.info("Employee with ID: {} updated successfully.", employee.getId());
             } else {
-                logger.warning("No employee found with ID: " + employee.getId());
+                logger.warn("No employee found with ID: {}", employee.getId());
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error occurred while updating employee with ID: " + employee.getId(), e);
+            logger.error("Error occurred while updating employee with ID: {}", employee.getId(), e);
             throw new RuntimeException("Error updating employee: " + e.getMessage(), e);
         }
     }
-
-
 
 
 
@@ -230,37 +257,48 @@ public class EmployeeDao {
 
             int rowsDeleted = stmt.executeUpdate();
             if (rowsDeleted > 0) {
-                logger.info("Employee with ID: " + employeeId + " deleted successfully.");
+                logger.info("Employee with ID: {} deleted successfully.", employeeId);
             } else {
-                logger.warning("No employee found with ID: " + employeeId);
+                logger.warn("No employee found with ID: {}", employeeId);
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error occurred while deleting employee with ID: " + employeeId, e);
+            logger.error("Error occurred while deleting employee with ID: {}", employeeId, e);
         }
     }
+
 
 
     // Add a new department
-    public void addDepartment(String departmentName) {
-        String query = "INSERT INTO departments (name) VALUES (?)";
+    public void addDepartment(String name, String code, String description, String managerName, String email, String location, String status) {
+        String sql = "INSERT INTO departments (name, code, description, manager_name, email, location, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection();  // Use DatabaseConnection here
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setString(1, departmentName);
+            stmt.setString(1, name);
+            stmt.setString(2, code);
+            stmt.setString(3, description);
+            stmt.setString(4, managerName);
+            stmt.setString(5, email);
+            stmt.setString(6, location);
+            stmt.setString(7, status);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            UIHelper.showAlert(Alert.AlertType.ERROR, "Error", "An error occurred while adding the department: " + e.getMessage());
         }
     }
+
+
 
     // Add a new role
     public void addRole(String roleName) {
-        String query = "INSERT INTO roles (name) VALUES (?)";
-
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+        String sql = "INSERT INTO roles (role_name) VALUES (?)"; // Make sure 'role_name' is used here
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, roleName);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            UIHelper.showAlert(Alert.AlertType.ERROR, "Database Error", "Failed to add role: " + e.getMessage());
         }
     }
+
 }
