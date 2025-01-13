@@ -15,7 +15,8 @@ import javafx.stage.Stage;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Button;
 import javafx.scene.layout.BorderPane;
-
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -54,47 +55,40 @@ public class MainApp extends Application {
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
-        // Establish the database connection
-        connection = DatabaseConnection.getConnection();
 
-        // Initialize productService with the established connection
-        productService = new ProductService(connection);
+        try {
+            // Establish the database connection
+            connection = DatabaseConnection.getConnection();
 
-        // Initialize EmployeeDao and EmployeeService
-        EmployeeDao employeeDao = new EmployeeDao(connection);
-        EmployeeService employeeService = new EmployeeService(employeeDao);
+            // Initialize services, daos, and views as before
 
-        // Initialize Employee Management View
-        EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);
+            // Initialize and configure SideMenu
+            SideMenu sideMenu = new SideMenu(this);  // Ensure MainApp is passed to SideMenu
+            mainLayout = new BorderPane();           // Make sure BorderPane is initialized properly
 
-        // Create ProductAndCategoryView and pass the connection and MainApp instance
-        ProductAndCategoryView productAndCategoryView = new ProductAndCategoryView(connection, this);
+            // Set the side menu and the main content area
+            mainLayout.setLeft(sideMenu);            // Add SideMenu on the left side
+            contentArea = new StackPane();           // Create StackPane to hold dynamic content
+            mainLayout.setCenter(contentArea);      // Set content area in the center
 
-        // Get the TabPane from the ProductAndCategoryView
-        tabPane = productAndCategoryView.getTabPane();
+            // Set up the scene and stage
+            Scene scene = new Scene(mainLayout, 800, 600);
+            primaryStage.setTitle("Inventory Management System");
+            primaryStage.setScene(scene);
+            primaryStage.show();  // Show the stage
 
-        // Get the Category Management Tab from the ProductAndCategoryView
-        categoryTab = productAndCategoryView.getCategoryTab();
+            // Show the default view (e.g., Dashboard)
+            showDashboard();  // Ensure this method properly loads the dashboard content
 
-        // Setup main layout
-        mainLayout = new BorderPane();
-        contentArea = new StackPane();
-        mainLayout.setCenter(contentArea);  // The center area will hold dynamic content
-
-        // Add the SideMenu
-        SideMenu sideMenu = new SideMenu(this); // Pass MainApp instance
-        mainLayout.setLeft(sideMenu);  // Side menu on the left
-
-        // Set up the primary stage scene and show it
-        Scene scene = new Scene(mainLayout, 800, 600);
-        primaryStage.setTitle("Inventory Management System");
-        primaryStage.setScene(scene);
-
-        // Show the main layout with the default view (Dashboard)
-        showDashboard();  // Load the dashboard content initially
-
-        primaryStage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Application Error", "An unexpected error occurred during startup.");
+        }
     }
+
+
+
+
 
 
 
@@ -154,11 +148,6 @@ public class MainApp extends Application {
     }
 
 
-    public void showCategoryManagement() {
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(new CategoryView(connection, this));
-    }
-
 
     public void showEmployees() {
         EmployeeDao employeeDao = new EmployeeDao(connection);
@@ -172,10 +161,19 @@ public class MainApp extends Application {
 
 
 
+    // In MainApp.java
     public void showCustomers() {
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(new CustomersView());
+        contentArea.getChildren().clear();  // Clear the current content
+
+        // Create and add CustomerView to the content area
+        CustomerView customerView = new CustomerView(connection);  // Pass connection if necessary
+        contentArea.getChildren().add(customerView);  // Add to the StackPane (center area)
     }
+
+
+
+
+
 
     public void showOrders() {
         contentArea.getChildren().clear();
@@ -210,6 +208,19 @@ public class MainApp extends Application {
     public void showHelp() {
         contentArea.getChildren().clear();
         contentArea.getChildren().add(new HelpView());
+    }
+
+    public void showError(String title, String message) {
+        // Create an Alert with a specific type (Error in this case)
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+
+        // Set the title and content of the alert
+        alert.setTitle(title);
+        alert.setHeaderText(null);  // No header
+        alert.setContentText(message);
+
+        // Show the alert and wait for user interaction
+        alert.showAndWait();
     }
 
     public static void main(String[] args) {

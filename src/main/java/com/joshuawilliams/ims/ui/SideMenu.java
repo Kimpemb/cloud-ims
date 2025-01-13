@@ -27,7 +27,7 @@ public class SideMenu extends VBox {
         setUpButtonAction(dashboardButton, mainApp::showDashboard);
         setUpButtonAction(manageProductsAndCategoriesButton, mainApp::showProductAndCategoryManagement);
         setUpButtonAction(employeesButton, mainApp::showEmployees);
-        setUpButtonAction(customersButton, mainApp::showCustomers);
+        setUpButtonAction(customersButton, mainApp::showCustomers);  // This calls the correct method in MainApp
         setUpButtonAction(ordersButton, mainApp::showOrders);
         setUpButtonAction(suppliersButton, mainApp::showSuppliers);
         setUpButtonAction(reportsButton, mainApp::showReports);
