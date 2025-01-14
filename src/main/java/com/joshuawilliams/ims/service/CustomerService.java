@@ -46,14 +46,15 @@ public class CustomerService {
 
     // Method to update a customer's information
     public boolean updateCustomer(Customer customer) throws SQLException {
-        // Delegate the update operation to the DAO
-        return customerDao.updateCustomer(customer);
+            return customerDao.updateCustomer(customer);
     }
 
-    // Method to delete a customer by ID
-    public boolean deleteCustomer(int customerId) throws SQLException {
-        return customerDao.deleteCustomer(customerId);  // Delegate to DAO
+
+        // Method to delete a customer by ID
+    public boolean deleteCustomer(String customerId) throws SQLException {
+        return customerDao.deleteCustomer(customerId);  // Pass customerId directly as a String
     }
+
 
 
 

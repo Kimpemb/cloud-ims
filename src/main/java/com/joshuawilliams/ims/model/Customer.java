@@ -30,8 +30,8 @@ public class Customer {
         this.status = status;
         this.registrationDate = registrationDate;
         this.loyaltyPoints = loyaltyPoints;
-        this.loyaltyLevel = loyaltyLevel;
         this.notes = notes;
+        this.loyaltyLevel = loyaltyLevel;
     }
 
     // Getters and Setters

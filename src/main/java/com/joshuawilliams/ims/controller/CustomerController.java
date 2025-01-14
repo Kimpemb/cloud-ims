@@ -44,24 +44,23 @@ public class CustomerController {
         try {
             return customerService.updateCustomer(customer);
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error updating customer: " + customer.getCustomerId(), e);
-            return false; // Return false if update fails
+            logger.log(Level.SEVERE, "Error updating customer with ID: " + customer.getCustomerId(), e);
+            return false;
         }
     }
+
 
     // Delete a customer by their unique ID
     public boolean deleteCustomer(String customerId) {
         try {
-            int id = Integer.parseInt(customerId); // Convert customerId to int
-            return customerService.deleteCustomer(id);  // Call deleteCustomer with int parameter
+            return customerService.deleteCustomer(customerId);  // Pass the customerId directly as a String
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Error deleting customer with ID: " + customerId, e);
             return false; // Return false if deletion fails
-        } catch (NumberFormatException e) {
-            logger.log(Level.WARNING, "Invalid customer ID format: " + customerId, e);
-            return false; // Return false if ID parsing fails
         }
     }
+
+
 
     // Get a list of all customers
     public List<Customer> getAllCustomers() {

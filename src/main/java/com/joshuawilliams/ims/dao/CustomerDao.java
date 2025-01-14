@@ -23,11 +23,45 @@ public class CustomerDao {
     // Generate Customer ID (e.g., CUST-YYYYMMDD-###)
     private String generateCustomerId() throws SQLException {
         String datePart = LocalDate.now().toString().replace("-", "");
-        int count = getCountForDate(datePart) + 1;  // Increment the count for today
-        return "CUST-" + datePart + "-" + String.format("%03d", count);
+        int count = getCountForDate(datePart);  // Get the current count for today
+        String customerId;
+
+        // Try generating a unique ID, retry if it already exists
+        do {
+            count++;  // Increment the count
+            customerId = "CUST-" + datePart + "-" + String.format("%03d", count);
+        } while (isCustomerIdExists(customerId));  // Check if the ID exists
+
+        return customerId;
     }
 
-    // Create a new customer (used for initial insertion)
+    // Check if customer ID already exists in the database
+    private boolean isCustomerIdExists(String customerId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM customers WHERE customer_id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, customerId);
+            ResultSet resultSet = statement.executeQuery();
+            return resultSet.getInt(1) > 0;  // Return true if customer ID exists
+        }
+    }
+
+    public Customer getCustomerById(String customerId) throws SQLException {
+        String sql = "SELECT * FROM customers WHERE customer_id = ?";
+
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, customerId);  // Set the customer ID parameter
+            ResultSet resultSet = statement.executeQuery();
+
+            if (resultSet.next()) {
+                // Map the result set to a Customer object
+                return mapResultSetToCustomer(resultSet);
+            } else {
+                return null;  // Return null if no customer with the given ID is found
+            }
+        }
+    }
+
+
     public boolean createCustomer(Customer customer) throws SQLException {
         String customerId = generateCustomerId();  // Generate Customer ID
 
@@ -61,40 +95,39 @@ public class CustomerDao {
         }
     }
 
-
     // Helper method to validate status
     private boolean isValidStatus(Status status) {
-        return status == Status.ACTIVE || status == Status.INACTIVE;
+        return status == Status.Active || status == Status.Inactive;
     }
 
-
-
-    // Get customer by ID
-    public Customer getCustomerById(String customerId) throws SQLException {
-        String sql = "SELECT * FROM customers WHERE customer_id = ?";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setString(1, customerId);
-            ResultSet resultSet = statement.executeQuery();
-            if (resultSet.next()) {
-                return mapResultSetToCustomer(resultSet);
-            }
-        }
-        return null;
-    }
 
     // Update customer details
+
     public boolean updateCustomer(Customer customer) throws SQLException {
-        String sql = "UPDATE customers SET first_name = ?, last_name = ?, email = ?, phone_number = ?, " +
-                "address = ?, date_of_birth = ?, status = ?, loyalty_points = ?, loyalty_level = ?, notes = ? " +
+        String sql = "UPDATE customers SET first_name = ?, last_name = ?, email = ?, phone_number = ?, address = ?, " +
+                "date_of_birth = ?, status = ?, registration_date = ?, loyalty_points = ?, loyalty_level = ?, notes = ? " +
                 "WHERE customer_id = ?";
 
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            mapCustomerToStatement(customer, statement);
-            statement.setString(11, customer.getCustomerId()); // Set customer ID at the end
-            return statement.executeUpdate() > 0;  // Return true if the update is successful
+            // Set parameters for the statement
+            statement.setString(1, customer.getFirstName());
+            statement.setString(2, customer.getLastName());
+            statement.setString(3, customer.getEmail());
+            statement.setString(4, customer.getPhoneNumber());
+            statement.setString(5, customer.getAddress());
+            statement.setDate(6, Date.valueOf(customer.getDateOfBirth()));
+            statement.setString(7, customer.getStatus().toString());
+            statement.setDate(8, Date.valueOf(customer.getRegistrationDate()));
+            statement.setInt(9, customer.getLoyaltyPoints());
+            statement.setString(10, customer.getLoyaltyLevel());
+            statement.setString(11, customer.getNotes());
+            statement.setString(12, customer.getCustomerId());
+
+            // Execute the update and return true if successful
+            return statement.executeUpdate() > 0;
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error updating customer", e);
-            throw e;
+            logger.log(Level.SEVERE, "Error updating customer with ID: " + customer.getCustomerId(), e);
+            throw e;  // Rethrow the exception
         }
     }
 
@@ -105,13 +138,14 @@ public class CustomerDao {
 
 
     // Delete customer by ID
-    public boolean deleteCustomer(int customerId) throws SQLException {
+    public boolean deleteCustomer(String customerId) throws SQLException {
         String sql = "DELETE FROM customers WHERE customer_id = ?";
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, customerId);
+            statement.setString(1, customerId);  // Use setString to pass customer_id as TEXT
             return statement.executeUpdate() > 0;
         }
     }
+
 
     // Get all customers
     public List<Customer> getAllCustomers() throws SQLException {
@@ -135,7 +169,8 @@ public class CustomerDao {
         String phone = resultSet.getString("phone_number");
         String address = resultSet.getString("address");
         LocalDate dob = resultSet.getDate("date_of_birth").toLocalDate();
-        Status status = Status.valueOf(resultSet.getString("status"));
+        String statusString = resultSet.getString("status");
+        Status status = mapResultSetToStatus(statusString);  // Call the method to map status
         LocalDate registrationDate = resultSet.getDate("registration_date").toLocalDate();
         int loyaltyPoints = resultSet.getInt("loyalty_points");
         String loyaltyLevel = resultSet.getString("loyalty_level");
@@ -143,6 +178,16 @@ public class CustomerDao {
 
         return new Customer(customerId, firstName, lastName, email, phone, address, dob, status, registrationDate, loyaltyPoints, loyaltyLevel, notes);
     }
+
+    private Status mapResultSetToStatus(String statusString) {
+        try {
+            return Status.valueOf(statusString.toUpperCase());  // Normalize the string to uppercase and convert to Status enum
+        } catch (IllegalArgumentException e) {
+            System.out.println("Invalid status value: " + statusString);
+            return Status.Inactive;  // Default to INACTIVE or handle as needed
+        }
+    }
+
 
     // Helper method to map Customer object to PreparedStatement
     private void mapCustomerToStatement(Customer customer, PreparedStatement statement) throws SQLException {
@@ -173,4 +218,5 @@ public class CustomerDao {
         }
         return 0;  // Default if no customers found
     }
+
 }
