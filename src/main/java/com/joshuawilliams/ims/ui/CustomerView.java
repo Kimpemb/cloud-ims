@@ -5,12 +5,16 @@ import com.joshuawilliams.ims.model.Customer;
 import com.joshuawilliams.ims.model.Status;
 import com.joshuawilliams.ims.dao.CustomerDao;
 import com.joshuawilliams.ims.service.CustomerService;
+
+import java.util.ArrayList;
 import java.util.Optional;  // Add this import at the top of your class
 
+import javafx.collections.ObservableList;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Alert.AlertType;
@@ -27,10 +31,20 @@ import javafx.scene.control.TableView;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.cell.PropertyValueFactory;
 
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
+import java.util.List;
+import java.sql.SQLException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+
 
 public class CustomerView extends StackPane {
+    private final CustomerService customerService;
     private final CustomerController customerController;
-    private final TableView<Customer> customerTable;
+    private static final Logger logger = Logger.getLogger(CustomerView.class.getName());
+    private TableView<Customer> customerTable;
     private TextField firstNameField, lastNameField, emailField, phoneField, addressField, dobField;
     private TextField loyaltyLevelField; // Renamed from notesField
     private ComboBox<String> statusComboBox;
@@ -46,15 +60,15 @@ public class CustomerView extends StackPane {
         CustomerDao customerDao = new CustomerDao(connection);
 
         // Initialize CustomerService with the CustomerDao
-        CustomerService customerService = new CustomerService(customerDao);
+        this.customerService = new CustomerService(customerDao);
 
         // Initialize CustomerController with the CustomerService
-        customerController = new CustomerController(customerService);
+        this.customerController = new CustomerController(customerService);  // Initialize the controller here
 
         // Initialize customerTable
         this.customerTable = createCustomerTable();  // Initialize customerTable in the constructor
 
-        // Initialize UI (you can include other UI setup logic here)
+        // Initialize UI
         initializeUI();
     }
 
@@ -76,30 +90,83 @@ public class CustomerView extends StackPane {
 
 
 
+    private ObservableList<Customer> customerList = FXCollections.observableArrayList();  // Example list, fetch real data as needed
+
     private VBox createManageCustomersUI() {
         VBox layout = new VBox(10);
-        layout.setPadding(new Insets(10));  // Adds padding around the entire VBox layout
+        layout.setPadding(new Insets(10));
 
-        // Create the TableView for customers
-        TableView<Customer> customerTable = createCustomerTable();  // Initialize the TableView
+        // Fetch customers from the service
+        ObservableList<Customer> customerList = FXCollections.observableArrayList(fetchAllCustomers());
+        customerTable.setItems(customerList);  // Set the customer list to the table
 
-        // Create a title label for "Customer Management"
+        // Create the first inner HBox for the title
+        HBox titleHBox = new HBox(10);
         Label titleLabel = new Label("Customer Management");
         titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        titleHBox.getChildren().add(titleLabel);
+        titleHBox.setAlignment(Pos.CENTER_LEFT);  // Align title to the left
+        HBox.setHgrow(titleLabel, Priority.ALWAYS);  // Allow title to take up available space
 
-        // Create a button for adding a new customer
+        // Create the second inner HBox for the buttons
+        HBox buttonsHBox = new HBox(10);
         Button addCustomerButton = new Button("Add New Customer");
         addCustomerButton.setOnAction(e -> openAddCustomerDialog());
+        Button refreshButton = new Button("Refresh");
+        refreshButton.setOnAction(e -> refreshCustomerTable());
+        buttonsHBox.getChildren().addAll(addCustomerButton, refreshButton);
+        buttonsHBox.setAlignment(Pos.CENTER_RIGHT);  // Align buttons to the right
 
-        // Create an HBox for the title and button with spacing
-        HBox titleAndButton = new HBox(250);  // Adding space between title and button
-        titleAndButton.getChildren().addAll(titleLabel, addCustomerButton);
-        titleAndButton.setAlignment(Pos.CENTER_LEFT);  // Aligns to the left for the label
+        // Create an outer HBox to hold both inner HBoxes
+        HBox outerHBox = new HBox(180);
+        outerHBox.getChildren().addAll(titleHBox, buttonsHBox);
 
-        // Add the title and button HBox, followed by the TableView to the layout
-        layout.getChildren().addAll(titleAndButton, customerTable);
+        // Create the search bar (TextField)
+        TextField searchField = new TextField();
+        searchField.setPromptText("Search by Customer ID, Name, or Email");
+
+        // Add a listener to filter the customer list based on search input
+        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
+            ObservableList<Customer> filteredCustomers = FXCollections.observableArrayList();
+
+            for (Customer customer : customerList) {
+                if (customer.getCustomerId().toLowerCase().contains(newValue.toLowerCase()) ||
+                        customer.getFirstName().toLowerCase().contains(newValue.toLowerCase()) ||
+                        customer.getLastName().toLowerCase().contains(newValue.toLowerCase()) ||
+                        customer.getEmail().toLowerCase().contains(newValue.toLowerCase())) {
+                    filteredCustomers.add(customer);
+                }
+            }
+
+            // Set the filtered customer list to the table
+            customerTable.setItems(filteredCustomers);
+        });
+
+        // Create an HBox for the search bar
+        HBox searchBox = new HBox(10);
+        searchBox.getChildren().addAll(searchField);
+        searchBox.setAlignment(Pos.CENTER_LEFT);  // Align the search bar to the left
+
+        // Add the outer HBox, search box, and customer table to the layout
+        layout.getChildren().addAll(outerHBox, searchBox, customerTable);
 
         return layout;
+    }
+
+
+
+
+
+
+    // Fetch customers from the service
+    public ObservableList<Customer> fetchAllCustomers() {
+        try {
+            List<Customer> customers = customerService.getAllCustomers();  // Get customers from service
+            return FXCollections.observableArrayList(customers);  // Convert to ObservableList
+        } catch (SQLException e) {
+            logger.log(Level.WARNING, "Error fetching customers: ", e);
+            return FXCollections.observableArrayList();  // Return an empty list in case of error
+        }
     }
 
 
@@ -133,18 +200,18 @@ public class CustomerView extends StackPane {
 
         // Validate mandatory fields
         if (firstName.isEmpty() || lastName.isEmpty() || email.isEmpty() || phoneNumber.isEmpty() || address.isEmpty()) {
-            showAlert(AlertType.ERROR, "Input Error", "Missing Required Fields", "Please fill out all fields.");
+            showAlert(Alert.AlertType.ERROR, "Input Error", "Missing Required Fields", "Please fill out all fields.");
             return;
         }
 
         if (dob == null) {
-            showAlert(AlertType.ERROR, "Input Error", "Date of Birth is required", "Please select a valid date.");
+            showAlert(Alert.AlertType.ERROR, "Input Error", "Date of Birth is required", "Please select a valid date.");
             return;
         }
 
         String statusString = statusComboBox.getValue();
         if (statusString == null) {
-            showAlert(AlertType.ERROR, "Input Error", "Status is required", "Please select a status.");
+            showAlert(Alert.AlertType.ERROR, "Input Error", "Status is required", "Please select a status.");
             return;
         }
 
@@ -152,7 +219,7 @@ public class CustomerView extends StackPane {
         int loyaltyPoints = 0; // Default loyalty points
 
         // Convert status string to enum
-        Status status = Status.valueOf(statusString.toUpperCase());
+        Status status = Status.valueOf(statusString);
 
         // Create a new customer object
         Customer customer = new Customer(
@@ -165,18 +232,17 @@ public class CustomerView extends StackPane {
 
         // Show success or failure message
         if (success) {
-            showAlert(AlertType.INFORMATION, "Success", "Customer Created Successfully",
+            showAlert(Alert.AlertType.INFORMATION, "Success", "Customer Created Successfully",
                     "Customer ID: " + customer.getCustomerId() +
                             "\nName: " + customer.getFirstName() + " " + customer.getLastName());
 
             clearFields(); // Reset all input fields and dropdowns
             closeAddCustomerDialog(); // Close the dialog window
         } else {
-            showAlert(AlertType.ERROR, "Creation Failed", "Unable to Create Customer",
+            showAlert(Alert.AlertType.ERROR, "Creation Failed", "Unable to Create Customer",
                     "An error occurred. Please try again.");
         }
     }
-
 
     // Helper method to clear all fields and reset dropdown prompts
     private void clearFields() {
@@ -400,12 +466,13 @@ public class CustomerView extends StackPane {
             // Handle the updated customer (e.g., save changes)
             boolean success = customerController.updateCustomer(updatedCustomer);
             if (success) {
-                refreshCustomerTable(); // Call a dedicated refresh method
+                refreshCustomerTable(); // Call the refresh method
             } else {
                 showError("Error updating customer.");
             }
         });
     }
+
 
     // Helper method for email validation
     private boolean isValidEmail(String email) {
@@ -416,6 +483,7 @@ public class CustomerView extends StackPane {
     private void refreshCustomerTable() {
         customerTable.setItems(FXCollections.observableArrayList(customerController.getAllCustomers()));
     }
+
 
 
 
@@ -459,7 +527,6 @@ public class CustomerView extends StackPane {
         errorAlert.setContentText(message);
         errorAlert.showAndWait();
     }
-
 
 
 

@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,17 +47,25 @@ public class CustomerService {
 
     // Method to update a customer's information
     public boolean updateCustomer(Customer customer) throws SQLException {
-            return customerDao.updateCustomer(customer);
+        return customerDao.updateCustomer(customer);
     }
 
-
-        // Method to delete a customer by ID
+    // Method to delete a customer by ID
     public boolean deleteCustomer(String customerId) throws SQLException {
         return customerDao.deleteCustomer(customerId);  // Pass customerId directly as a String
     }
 
+    // Method to search customers based on provided criteria
+    public List<Customer> searchCustomers(String customerId, String firstName, String lastName, String email) throws SQLException {
+        List<Customer> allCustomers = getAllCustomers();  // Get all customers from the database
 
-
+        return allCustomers.stream()
+                .filter(customer -> (customerId == null || customer.getCustomerId().toLowerCase().contains(customerId.toLowerCase())) &&
+                        (firstName == null || customer.getFirstName().toLowerCase().contains(firstName.toLowerCase())) &&
+                        (lastName == null || customer.getLastName().toLowerCase().contains(lastName.toLowerCase())) &&
+                        (email == null || customer.getEmail().toLowerCase().contains(email.toLowerCase())))
+                .collect(Collectors.toList());
+    }
 
     // Validate the customer's age (between 13 and 99)
     private boolean validateCustomerAge(LocalDate dob) {

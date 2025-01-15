@@ -74,6 +74,12 @@ public class CustomerDao {
             return false;  // Return false if status is invalid
         }
 
+        // Check if the email already exists in the database
+        if (emailExists(customer.getEmail())) {
+            logger.log(Level.WARNING, "Email already in use: " + customer.getEmail());
+            throw new SQLException("Email is already in use. Please choose a different email.");
+        }
+
         String sql = "INSERT INTO customers (customer_id, first_name, last_name, email, phone_number, address, " +
                 "date_of_birth, status, registration_date, loyalty_points, loyalty_level, notes) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -95,6 +101,19 @@ public class CustomerDao {
         }
     }
 
+    private boolean emailExists(String email) throws SQLException {
+        String query = "SELECT COUNT(*) FROM customers WHERE email = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, email);
+            ResultSet resultSet = statement.executeQuery();
+            return resultSet.getInt(1) > 0;  // Return true if email exists
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Error checking if email exists: " + email, e);
+            throw new SQLException("Error checking email existence", e);
+        }
+    }
+
+
     // Helper method to validate status
     private boolean isValidStatus(Status status) {
         return status == Status.Active || status == Status.Inactive;
@@ -109,6 +128,12 @@ public class CustomerDao {
                 "WHERE customer_id = ?";
 
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            // Validate the status field
+            String status = customer.getStatus().toString();
+            if (!status.equals("Active") && !status.equals("Inactive")) {
+                throw new IllegalArgumentException("Invalid status value: " + status);
+            }
+
             // Set parameters for the statement
             statement.setString(1, customer.getFirstName());
             statement.setString(2, customer.getLastName());
@@ -116,7 +141,7 @@ public class CustomerDao {
             statement.setString(4, customer.getPhoneNumber());
             statement.setString(5, customer.getAddress());
             statement.setDate(6, Date.valueOf(customer.getDateOfBirth()));
-            statement.setString(7, customer.getStatus().toString());
+            statement.setString(7, status);  // Set the validated status
             statement.setDate(8, Date.valueOf(customer.getRegistrationDate()));
             statement.setInt(9, customer.getLoyaltyPoints());
             statement.setString(10, customer.getLoyaltyLevel());
@@ -127,9 +152,13 @@ public class CustomerDao {
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Error updating customer with ID: " + customer.getCustomerId(), e);
-            throw e;  // Rethrow the exception
+            throw e;  // Rethrow the exception to be handled at a higher level
+        } catch (IllegalArgumentException e) {
+            logger.log(Level.SEVERE, "Error: " + e.getMessage(), e);
+            throw e;  // Rethrow the exception to be handled at a higher level
         }
     }
+
 
     // In CustomerDao.java
     public boolean saveCustomer(Customer customer) throws SQLException {
