@@ -96,6 +96,13 @@ public class CustomerView extends StackPane {
         VBox layout = new VBox(10);
         layout.setPadding(new Insets(10));
 
+        // Declare and initialize the searchTextField here
+        TextField searchTextField = new TextField();
+        searchTextField.setPromptText("Search by Customer ID, Name, or Email");
+        searchTextField.setVisible(false);  // Initially hidden
+        searchTextField.setPrefWidth(300);
+        searchTextField.setMaxHeight(30);
+
         // Fetch customers from the service
         ObservableList<Customer> customerList = FXCollections.observableArrayList(fetchAllCustomers());
         customerTable.setItems(customerList);  // Set the customer list to the table
@@ -108,50 +115,81 @@ public class CustomerView extends StackPane {
         titleHBox.setAlignment(Pos.CENTER_LEFT);  // Align title to the left
         HBox.setHgrow(titleLabel, Priority.ALWAYS);  // Allow title to take up available space
 
-        // Create the second inner HBox for the buttons
+        // Create the second inner HBox for the buttons (Add New Customer, Refresh, Search)
         HBox buttonsHBox = new HBox(10);
         Button addCustomerButton = new Button("Add New Customer");
         addCustomerButton.setOnAction(e -> openAddCustomerDialog());
         Button refreshButton = new Button("Refresh");
         refreshButton.setOnAction(e -> refreshCustomerTable());
-        buttonsHBox.getChildren().addAll(addCustomerButton, refreshButton);
+
+        // Create the magnifying glass button for search and add to the buttonsHBox
+        Button magnifyingGlassButton = new Button("🔍");
+        magnifyingGlassButton.setStyle("-fx-font-size: 13px;");
+        magnifyingGlassButton.setOnAction(e -> toggleSearchVisibility(searchTextField));  // Action to toggle search field visibility
+
+        buttonsHBox.getChildren().addAll(magnifyingGlassButton, addCustomerButton, refreshButton);
         buttonsHBox.setAlignment(Pos.CENTER_RIGHT);  // Align buttons to the right
 
-        // Create an outer HBox to hold both inner HBoxes
-        HBox outerHBox = new HBox(180);
+        // Create an outer HBox to hold both the title and buttons
+        HBox outerHBox = new HBox(200);  // Reduced space between the elements
         outerHBox.getChildren().addAll(titleHBox, buttonsHBox);
-
-        // Create the search bar (TextField)
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search by Customer ID, Name, or Email");
+        outerHBox.setAlignment(Pos.CENTER_LEFT);  // Align the entire HBox to the left
 
         // Add a listener to filter the customer list based on search input
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            ObservableList<Customer> filteredCustomers = FXCollections.observableArrayList();
-
-            for (Customer customer : customerList) {
-                if (customer.getCustomerId().toLowerCase().contains(newValue.toLowerCase()) ||
-                        customer.getFirstName().toLowerCase().contains(newValue.toLowerCase()) ||
-                        customer.getLastName().toLowerCase().contains(newValue.toLowerCase()) ||
-                        customer.getEmail().toLowerCase().contains(newValue.toLowerCase())) {
-                    filteredCustomers.add(customer);
-                }
-            }
-
-            // Set the filtered customer list to the table
-            customerTable.setItems(filteredCustomers);
+        searchTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+            handleSearchInput(newValue, customerList);
         });
 
-        // Create an HBox for the search bar
+        // Add listener to close the search bar if clicked outside
+        searchTextField.focusedProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue) {
+                closeSearchArea(searchTextField);  // Close the search text field when focus is lost
+            }
+        });
+
+        // Create an HBox for the search box (not separately needed anymore)
         HBox searchBox = new HBox(10);
-        searchBox.getChildren().addAll(searchField);
-        searchBox.setAlignment(Pos.CENTER_LEFT);  // Align the search bar to the left
+        searchBox.getChildren().add(searchTextField);
+        searchBox.setAlignment(Pos.CENTER);  // Align the search field to the left
 
         // Add the outer HBox, search box, and customer table to the layout
         layout.getChildren().addAll(outerHBox, searchBox, customerTable);
 
         return layout;
     }
+
+
+
+    private void toggleSearchVisibility(TextField searchTextField) {
+        searchTextField.setVisible(!searchTextField.isVisible());
+        if (searchTextField.isVisible()) {
+            searchTextField.requestFocus();
+        }
+    }
+
+    private void closeSearchArea(TextField searchTextField) {
+        searchTextField.setVisible(false);  // Hide the search text field when clicked outside
+    }
+
+    private void handleSearchInput(String query, ObservableList<Customer> customerList) {
+        ObservableList<Customer> filteredCustomers = FXCollections.observableArrayList();
+
+        for (Customer customer : customerList) {
+            if (customer.getCustomerId().toLowerCase().contains(query.toLowerCase()) ||
+                    customer.getFirstName().toLowerCase().contains(query.toLowerCase()) ||
+                    customer.getLastName().toLowerCase().contains(query.toLowerCase()) ||
+                    customer.getEmail().toLowerCase().contains(query.toLowerCase())) {
+                filteredCustomers.add(customer);
+            }
+        }
+
+        // Set the filtered customer list to the table
+        customerTable.setItems(filteredCustomers);
+    }
+
+
+
+
 
 
 
@@ -517,6 +555,15 @@ public class CustomerView extends StackPane {
             showError("Error: customerTable is not initialized.");
         }
     }
+
+
+
+
+    private void clearSearchInput(TextArea searchTextArea, ObservableList<Customer> customerList) {
+        searchTextArea.clear();
+        customerTable.setItems(customerList);  // Reset to full list
+    }
+
 
 
     // Helper method to show error messages
