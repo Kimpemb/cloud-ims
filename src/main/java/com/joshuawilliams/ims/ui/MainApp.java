@@ -37,38 +37,40 @@ public class MainApp extends Application {
     private Tab categoryManagementTab;
     private Tab categoryTab;
 
+    // Constructor to initialize the connection
     public MainApp() {
         // Initialize the connection during MainApp instantiation
         connection = DatabaseConnection.getConnection();
+        if (connection != null) {
+            productService = new ProductService(connection); // Initialize productService with the connection
+        } else {
+            System.out.println("Failed to establish database connection.");
+        }
     }
 
+    // Getter method for connection
     public Connection getConnection() {
         return connection;
     }
 
     // Optional: Add a method to close the connection when the app shuts down
     public void closeConnection() {
-        DatabaseConnection.closeConnection(connection);
+        if (connection != null) {
+            DatabaseConnection.closeConnection(connection);
+        }
     }
-
 
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
 
         try {
-            // Establish the database connection
-            connection = DatabaseConnection.getConnection();
-
-            // Initialize services, daos, and views as before
-
+            // Initialize services, daos, and views
             // Initialize and configure SideMenu
-            SideMenu sideMenu = new SideMenu(this);  // Ensure MainApp is passed to SideMenu
-            mainLayout = new BorderPane();           // Make sure BorderPane is initialized properly
-
-            // Set the side menu and the main content area
-            mainLayout.setLeft(sideMenu);            // Add SideMenu on the left side
-            contentArea = new StackPane();           // Create StackPane to hold dynamic content
+            SideMenu sideMenu = new SideMenu(this);  // Pass MainApp to SideMenu
+            mainLayout = new BorderPane();           // Initialize BorderPane
+            mainLayout.setLeft(sideMenu);            // Set SideMenu on the left
+            contentArea = new StackPane();           // Create StackPane for dynamic content
             mainLayout.setCenter(contentArea);      // Set content area in the center
 
             // Set up the scene and stage
@@ -78,24 +80,13 @@ public class MainApp extends Application {
             primaryStage.show();  // Show the stage
 
             // Show the default view (e.g., Dashboard)
-            showDashboard();  // Ensure this method properly loads the dashboard content
+            showDashboard();  // Ensure this method loads the dashboard content
 
         } catch (Exception e) {
             e.printStackTrace();
             showError("Application Error", "An unexpected error occurred during startup.");
         }
     }
-
-
-
-
-
-
-
-
-
-
-
 
     // Getter methods for tabPane and categoryTab
     public TabPane getTabPane() {
@@ -109,17 +100,18 @@ public class MainApp extends Application {
     @Override
     public void stop() {
         // Close the database connection on application shutdown
-        if (connection != null) {
-            DatabaseConnection.closeConnection(connection);
-            System.out.println("Application stopped, database connection closed.");
-        }
+        closeConnection();
+        System.out.println("Application stopped, database connection closed.");
     }
 
-
-
     // Method to insert a new product
-    // In MainApp
     public void insertProduct(String name, double price, int quantity, int categoryId) {
+        // Check if productService is initialized
+        if (productService == null) {
+            System.out.println("Error: ProductService is not initialized.");
+            return;
+        }
+
         // Directly call the ProductService to add the product
         boolean success = productService.addProduct(name, price, quantity, categoryId);
         if (success) {
@@ -128,6 +120,7 @@ public class MainApp extends Application {
             System.out.println("Failed to add the product: " + name);
         }
     }
+
 
 
     // Methods to switch between views

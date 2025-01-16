@@ -21,46 +21,47 @@ public class ProductDao {
 
     // Method to add a new product to the database
     public boolean addProduct(Product product) {
-        if (product == null || product.getName() == null || product.getName().trim().isEmpty()) {
-            System.out.println("Invalid product data.");
-            return false;  // Return false if the product or its name is invalid
-        }
+        String sql = "INSERT INTO products (name, price, quantity, category_id) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, product.getName());
+            stmt.setDouble(2, product.getPrice());
+            stmt.setInt(3, product.getQuantity());
+            stmt.setInt(4, product.getCategoryId());
 
-        String query = "INSERT INTO products (name, price, quantity, category_id) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, product.getName());
-            statement.setDouble(2, product.getPrice());
-            statement.setInt(3, product.getQuantity());
-            statement.setInt(4, product.getCategoryId());
-
-            int rowsAffected = statement.executeUpdate();
-            return rowsAffected > 0;  // Return true if the product was added successfully
+            int rowsAffected = stmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Product added to the database: " + product.getName());
+                return true;
+            } else {
+                System.out.println("Failed to add product to the database: " + product.getName());
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;  // Return false if an error occurs
         }
+        return false;
     }
+
 
     // Method to check if a product already exists (case-insensitive check)
     public boolean doesProductExist(String name) {
         if (name == null || name.trim().isEmpty()) {
-            return false;  // Return false if the product name is invalid
+            return false;
         }
 
-        // SQL query with case-insensitive check using LOWER()
-        String query = "SELECT COUNT(*) FROM products WHERE LOWER(name) = LOWER(?)";
-
-        try (PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, name);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                // If a product exists (count > 0), return true
-                return resultSet.next() && resultSet.getInt(1) > 0;
+        // Query the database to check for existing product by name
+        String query = "SELECT COUNT(*) FROM products WHERE name = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setString(1, name.trim()); // Remove leading/trailing spaces before querying
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                return true; // Product already exists
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;  // Return false if an error occurs
         }
+        return false; // No product found
     }
+
 
     // Method to search for products by name (case-insensitive search)
     public List<Product> searchProducts(String searchQuery) {

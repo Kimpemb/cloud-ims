@@ -13,16 +13,15 @@ import java.util.List;
 public class ProductService {
 
     private ProductDao productDao;
-    private Connection connection; // Store the connection as an instance variable
+    private Connection connection;
 
-    // Constructor with only connection
+    // Constructor that accepts a connection and initializes ProductDao
     public ProductService(Connection connection) {
-        this.connection = connection; // Initialize the connection
-        this.productDao = new ProductDao(connection); // Initialize the ProductDao
+        this.connection = connection; // Store the connection
+        this.productDao = new ProductDao(connection); // Initialize the ProductDao with the connection
     }
 
     // Method to add a product
-    // In ProductService
     public boolean addProduct(String name, double price, int quantity, int categoryId) {
         // Validate input data
         if (name == null || name.trim().isEmpty() || price <= 0 || quantity <= 0 || categoryId <= 0) {
@@ -31,7 +30,7 @@ public class ProductService {
         }
 
         // Check if the product already exists
-        if (productDao.doesProductExist(name)) {
+        if (doesProductExist(name)) {
             System.out.println("Product already exists: " + name);
             return false;
         }
@@ -40,26 +39,34 @@ public class ProductService {
         Product product = new Product(name, price, quantity, categoryId);
 
         // Call the DAO method to add the product to the database
-        return productDao.addProduct(product);
+        boolean added = productDao.addProduct(product);
+        if (added) {
+            System.out.println("Product added successfully: " + name);
+        } else {
+            System.out.println("Failed to add the product: " + name);
+        }
+
+        return added;
     }
 
 
-    // Method to check if a product exists
+    // Method to check if a product exists by name
     public boolean doesProductExist(String name) {
         if (name == null || name.trim().isEmpty()) {
-            return false;
+            return false; // Invalid product name
         }
-        return productDao.doesProductExist(name);
+        return productDao.doesProductExist(name); // Check via ProductDao
     }
 
     // Method to fetch all products from the database
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
-        String query = "SELECT * FROM products";
+        String query = "SELECT * FROM products"; // SQL query to fetch all products
 
         try (PreparedStatement statement = connection.prepareStatement(query);
              ResultSet resultSet = statement.executeQuery()) {
 
+            // Iterate through result set and create Product objects
             while (resultSet.next()) {
                 int id = resultSet.getInt("id");
                 String name = resultSet.getString("name");
@@ -67,49 +74,52 @@ public class ProductService {
                 int quantity = resultSet.getInt("quantity");
                 int categoryId = resultSet.getInt("category_id");
 
+                // Add the product to the list
                 products.add(new Product(id, name, price, quantity, categoryId));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            e.printStackTrace(); // Log the error
         }
 
-        return products;
+        return products; // Return the list of products
     }
 
-    // Method to update a product
+    // Method to update a product in the database
     public boolean updateProduct(Product product) {
-        // Check if the product name already exists
+        // Validate if the product already exists before updating
         if (doesProductExist(product.getName())) {
             System.out.println("Product name already exists: " + product.getName());
-            return false;  // Return false if the product name already exists
+            return false; // If product already exists, return false
         }
 
-        // Update product logic (execute an SQL UPDATE query)
+        // SQL query to update product details
         String sql = "UPDATE products SET name = ?, price = ?, quantity = ? WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, product.getName());
             stmt.setDouble(2, product.getPrice());
             stmt.setInt(3, product.getQuantity());
             stmt.setInt(4, product.getId());
+
+            // Execute update query and check if any rows were affected
             int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0; // Success if rows were updated
+            return rowsAffected > 0; // Return true if rows were updated
         } catch (SQLException e) {
-            e.printStackTrace(); // Log the exception
-            return false; // Indicate failure
+            e.printStackTrace(); // Log any SQL exceptions
+            return false; // Return false if an error occurred
         }
     }
 
-
-    // Method to delete a product
+    // Method to delete a product from the database
     public boolean deleteProduct(Product product) {
-        String sql = "DELETE FROM products WHERE id = ?";
+        String sql = "DELETE FROM products WHERE id = ?"; // SQL query to delete the product
+
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
-            stmt.setInt(1, product.getId());  // Use product's ID
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0;
+            stmt.setInt(1, product.getId()); // Set product ID for deletion
+            int rowsAffected = stmt.executeUpdate(); // Execute delete query
+            return rowsAffected > 0; // Return true if product was deleted
         } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
+            e.printStackTrace(); // Log any SQL exceptions
+            return false; // Return false if an error occurred
         }
     }
 }
