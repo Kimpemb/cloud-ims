@@ -4,6 +4,8 @@ import com.joshuawilliams.ims.service.ProductService;
 import com.joshuawilliams.ims.model.Product;
 import com.joshuawilliams.ims.dao.ProductDao;
 
+import javafx.beans.property.SimpleStringProperty;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
@@ -19,156 +21,216 @@ import javafx.scene.layout.VBox;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
-
-
-public class ProductsView extends StackPane {
+public class ProductsView extends VBox {
 
     private TableView<Product> productTable;
     private ProductService productService;
-    private Connection connection;
     private ObservableList<Product> allProducts;
+    private Connection connection;
+    private TextField searchField; // Declare the searchField as an instance variable
 
     public ProductsView(Connection connection, MainApp mainApp, TabPane tabPane, Tab categoryManagementTab) {
         this.connection = connection;
         this.productService = new ProductService(connection);
 
-        // Create the TableView for products
-        productTable = new TableView<>();
+        // Initialize product table and load data
+        productTable = createProductTable();
+
+        // Initialize the search field
+        searchField = createSearchField();
+
+        // Initialize the UI components
+        initializeUI(mainApp, tabPane, categoryManagementTab);
+    }
+
+    // Create the product table with columns
+    private TableView<Product> createProductTable() {
+        TableView<Product> table = new TableView<>();
         allProducts = FXCollections.observableArrayList(productService.getAllProducts());
-        productTable.setItems(allProducts);
+        table.setItems(allProducts);
 
-        // Define columns for the product table
+        // Define columns for product details
+        table.getColumns().addAll(
+                createColumn("Product ID", "id", Integer.class),
+                createColumn("Product Name", "name", String.class),
+                createCategoryColumn(),
+                createColumn("Price", "price", Double.class),
+                createColumn("Quantity", "quantity", Integer.class),
+                createEditColumn(),
+                createDeleteColumn()
+        );
 
-// Define ID column
-        TableColumn<Product, Integer> idColumn = new TableColumn<>("Product ID");
-        idColumn.setCellValueFactory(new PropertyValueFactory<>("id"));  // Using PropertyValueFactory for consistency
+        return table;
+    }
 
-// Define Name column
-        TableColumn<Product, String> nameColumn = new TableColumn<>("Product Name");
-        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
+    // Create a category column that fetches category names
+    private TableColumn<Product, String> createCategoryColumn() {
+        TableColumn<Product, String> categoryColumn = new TableColumn<>("Category");
+        categoryColumn.setCellValueFactory(cellData -> new SimpleStringProperty(
+                productService.getCategoryNameById(cellData.getValue().getCategoryId())
+        ));
+        return categoryColumn;
+    }
 
-// Define Price column
-        TableColumn<Product, Double> priceColumn = new TableColumn<>("Price");
-        priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
+    // Generic method to create columns for the table
+    private <T> TableColumn<Product, T> createColumn(String title, String property, Class<T> type) {
+        TableColumn<Product, T> column = new TableColumn<>(title);
+        column.setCellValueFactory(new PropertyValueFactory<>(property));
+        return column;
+    }
 
-// Define Quantity column
-        TableColumn<Product, Integer> quantityColumn = new TableColumn<>("Quantity");
-        quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantity"));
-
-// Define Edit and Delete columns
-        TableColumn<Product, Void> editColumn = createEditColumn();
-        TableColumn<Product, Void> deleteColumn = createDeleteColumn();
-
-// Add columns to the table
-        productTable.getColumns().addAll(idColumn, nameColumn, priceColumn, quantityColumn, editColumn, deleteColumn);
-
-        // Load data into the table
-        loadProductData();
-
-        // Create a title for the view
+    // Initialize the main UI layout
+    private void initializeUI(MainApp mainApp, TabPane tabPane, Tab categoryManagementTab) {
         Label titleLabel = new Label("Product Management");
         titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
-        // Create a TextField for the search bar
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search for products...");
-        searchField.setOnKeyReleased(this::handleSearch);
+        // Create the top layout (title and button row)
+        HBox topLayout = createTopLayout(titleLabel, mainApp, tabPane, categoryManagementTab);
 
-        // Create a button for adding a new product
+        // Main layout with VBox: top section + search field and product table
+        VBox mainLayout = new VBox(10, topLayout, searchField, productTable);
+        mainLayout.setPadding(new Insets(10));
+
+        addClickOutsideHandler();  // Add this line
+
+        this.getChildren().add(mainLayout);
+    }
+
+    // Create the top layout with title and buttons
+    private HBox createTopLayout(Label titleLabel, MainApp mainApp, TabPane tabPane, Tab categoryManagementTab) {
+        HBox topLayout = new HBox(20);
+        topLayout.setAlignment(Pos.CENTER_LEFT);
+
+        // Left: Product Management title
+        HBox titleLayout = new HBox(titleLabel);
+        titleLayout.setAlignment(Pos.CENTER_LEFT);
+        topLayout.getChildren().add(titleLayout);
+
+        // Right: Button layout
+        HBox buttonLayout = createButtonLayout(mainApp, tabPane, categoryManagementTab);
+        topLayout.getChildren().add(buttonLayout);
+
+        return topLayout;
+    }
+
+    // Create the layout for the buttons
+    private HBox createButtonLayout(MainApp mainApp, TabPane tabPane, Tab categoryManagementTab) {
+        Button searchToggleButton = new Button("🔍");
+        searchToggleButton.setStyle("-fx-font-size: 13px;");
+        searchToggleButton.setOnAction(e -> toggleSearchVisibility());
+
         Button addProductButton = new Button("Add New Product");
         addProductButton.setOnAction(e -> {
             AddProductDialog.show(new Stage(), connection, mainApp::insertProduct);
             loadProductData();
         });
 
-        // Create a button for managing categories
         Button manageCategoriesButton = new Button("Manage Categories");
         manageCategoriesButton.setOnAction(e -> tabPane.getSelectionModel().select(categoryManagementTab));
 
-        // Create a button for refreshing the table
         Button refreshButton = new Button("Refresh Table");
-        refreshButton.setOnAction(e -> loadProductData());
+        refreshButton.setOnAction(e -> {
+            loadProductData(); // Refresh the table data
+        });
 
-        // Layout for the buttons
-        HBox buttonLayout = new HBox(10); // Horizontal layout with spacing
-        buttonLayout.getChildren().addAll(addProductButton, manageCategoriesButton, refreshButton);
-
-        // Main layout with a VBox
-        VBox mainLayout = new VBox(10); // Vertical layout with spacing
-        mainLayout.getChildren().addAll(titleLabel, searchField, productTable, buttonLayout);
-        mainLayout.setPadding(new Insets(10)); // Add padding for consistent spacing
-
-        // Add the main layout to the container
-        this.getChildren().add(mainLayout);
+        // Layout for buttons on the right
+        HBox buttonLayout = new HBox(10, searchToggleButton, addProductButton, manageCategoriesButton, refreshButton);
+        buttonLayout.setAlignment(Pos.CENTER_RIGHT);
+        return buttonLayout;
     }
 
-
-
+    // Load product data from productService
     private void loadProductData() {
         allProducts.clear();
-        allProducts.addAll(productService.getAllProducts());
+        allProducts.addAll(productService.refreshProductList());  // Use the refresh method
     }
 
+
+    // Create a search field for filtering products
+    private TextField createSearchField() {
+        TextField searchField = new TextField();
+        searchField.setPromptText("Search by Product ID, Name, or Category...");
+        searchField.setVisible(false); // Initially hidden
+        searchField.setPrefWidth(300);
+        searchField.setOnKeyReleased(this::handleSearch);
+        return searchField;
+    }
+
+    // Handle search event to filter the products based on user input
     private void handleSearch(KeyEvent event) {
         String query = ((TextField) event.getSource()).getText().toLowerCase();
         ObservableList<Product> filteredProducts = FXCollections.observableArrayList();
+
         for (Product product : productService.getAllProducts()) {
-            if (product.getName().toLowerCase().contains(query)) {
+            if (product.getName().toLowerCase().contains(query) ||
+                    productService.getCategoryNameById(product.getCategoryId()).toLowerCase().contains(query) ||
+                    String.valueOf(product.getId()).contains(query)) {
                 filteredProducts.add(product);
             }
         }
+
         productTable.setItems(filteredProducts);
     }
 
+    // Add this method to your UI initialization to handle clicks outside the search field
+    private void addClickOutsideHandler() {
+        this.setOnMouseClicked(event -> {
+            // Check if the click is not on the search field or the toggle button
+            if (!searchField.isHover() && !searchField.isFocused() && !event.getTarget().equals(searchField)) {
+                searchField.setVisible(false);
+            }
+        });
+    }
+
+
+    // Toggle visibility of the search field
+    private void toggleSearchVisibility() {
+        searchField.setVisible(!searchField.isVisible());
+        if (searchField.isVisible()) searchField.requestFocus();
+    }
 
     // Create the Edit column for the product table
     private TableColumn<Product, Void> createEditColumn() {
         TableColumn<Product, Void> editColumn = new TableColumn<>("Edit");
-        editColumn.setCellFactory(new Callback<>() {
+        editColumn.setCellFactory(param -> new TableCell<>() {
+            private final Button editButton = new Button("Edit");
+
+            {
+                editButton.setOnAction(e -> {
+                    Product product = getTableView().getItems().get(getIndex());
+                    Callback<Product, Void> updateCallback = updatedProduct -> {
+                        // Validate new product name
+                        String newName = updatedProduct.getName().trim();
+                        if (newName.isEmpty()) {
+                            EditProductDialog.showAlert("Validation Error", "Product name cannot be empty.");
+                            return null;
+                        }
+
+                        // Check for duplicate product name
+                        if (!newName.equals(product.getName()) && productService.doesProductExist(newName)) {
+                            EditProductDialog.showAlert("Duplicate Product Name", "The product name already exists. Please choose a different name.");
+                            return null;
+                        }
+
+                        // Update product in the database
+                        productService.updateProduct(updatedProduct);
+                        loadProductData();
+                        return null;
+                    };
+
+                    EditProductDialog.show(new Stage(), connection, product, updateCallback);
+                });
+            }
+
             @Override
-            public TableCell<Product, Void> call(TableColumn<Product, Void> param) {
-                return new TableCell<>() {
-                    private final Button editButton = new Button("Edit");
-
-                    {
-                        editButton.setOnAction(e -> {
-                            Product product = getTableView().getItems().get(getIndex());
-                            Callback<Product, Void> updateCallback = updatedProduct -> {
-                                // Validate new product name
-                                String newName = updatedProduct.getName().trim();
-                                if (newName.isEmpty()) {
-                                    EditProductDialog.showAlert("Validation Error", "Product name cannot be empty.");
-                                    return null;
-                                }
-
-                                // Check for duplicate product name
-                                if (!newName.equals(product.getName()) && productService.doesProductExist(newName)) {
-                                    EditProductDialog.showAlert("Duplicate Product Name", "The product name already exists. Please choose a different name.");
-                                    return null;
-                                }
-
-                                // Update product in the database
-                                productService.updateProduct(updatedProduct);
-                                loadProductData(); // Reload the product table
-                                return null;
-                            };
-
-                            EditProductDialog.show(new Stage(), connection, product, updateCallback);
-                        });
-                    }
-
-                    @Override
-                    protected void updateItem(Void item, boolean empty) {
-                        super.updateItem(item, empty);
-                        setGraphic(empty ? null : editButton);
-                    }
-                };
+            public void updateItem(Void item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(empty ? null : editButton);
             }
         });
         return editColumn;
     }
 
-    // Create the Delete column for the product table
     // Create the Delete column for the product table
     private TableColumn<Product, Void> createDeleteColumn() {
         TableColumn<Product, Void> deleteColumn = new TableColumn<>("Delete");
@@ -176,8 +238,10 @@ public class ProductsView extends StackPane {
             private final Button deleteButton = new Button("Delete");
 
             {
-                // Set delete button action handler for the product table
-                deleteButton.setOnAction(event -> handleDeleteAction());
+                deleteButton.setOnAction(event -> {
+                    Product product = getTableView().getItems().get(getIndex());
+                    showDeleteConfirmationDialog(product);
+                });
             }
 
             @Override
@@ -188,17 +252,6 @@ public class ProductsView extends StackPane {
         });
         return deleteColumn;
     }
-
-    // Handle delete action for product
-    private void handleDeleteAction() {
-        Product selectedProduct = productTable.getSelectionModel().getSelectedItem();
-        if (selectedProduct != null) {
-            showDeleteConfirmationDialog(selectedProduct);
-        } else {
-            System.out.println("No product selected for deletion.");
-        }
-    }
-
 
     // Show confirmation dialog before deleting product
     private void showDeleteConfirmationDialog(Product selectedProduct) {
@@ -218,15 +271,6 @@ public class ProductsView extends StackPane {
     private void deleteProduct(Product selectedProduct) {
         ProductDao productDao = new ProductDao(connection);
         productDao.deleteProduct(selectedProduct);
-        loadProducts(); // Refresh the product table after deletion
+        loadProductData(); // Refresh the product table after deletion
     }
-
-    // Load products into the table
-    private void loadProducts() {
-        ProductDao productDao = new ProductDao(connection);
-        ObservableList<Product> productList = FXCollections.observableArrayList(productDao.getAllProducts());
-        productTable.setItems(productList);  // Set the updated product list in the table
-    }
-
-
 }

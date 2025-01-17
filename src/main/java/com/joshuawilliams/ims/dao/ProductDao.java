@@ -114,25 +114,28 @@ public class ProductDao {
     // Method to fetch all products from the database
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
-        String query = "SELECT * FROM products";
+        String query = "SELECT id, name, price, quantity, category_id FROM products";
 
         try (PreparedStatement statement = connection.prepareStatement(query);
              ResultSet resultSet = statement.executeQuery()) {
 
             while (resultSet.next()) {
-                int id = resultSet.getInt("id");
-                String name = resultSet.getString("name");
-                double price = resultSet.getDouble("price");
-                int quantity = resultSet.getInt("quantity");
-                int categoryId = resultSet.getInt("category_id");
-
-                products.add(new Product(id, name, price, quantity, categoryId));
+                Product product = new Product(
+                        resultSet.getInt("id"),
+                        resultSet.getString("name"),
+                        resultSet.getDouble("price"),
+                        resultSet.getInt("quantity"),
+                        resultSet.getInt("category_id")
+                );
+                products.add(product);
             }
+
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error fetching products: " + e.getMessage());
         }
 
-        return products;  // Return the list of products found
+        return products;
     }
+
 
 }
