@@ -55,6 +55,7 @@ public class CustomerView extends StackPane {
     private VBox dialogLayout;  // To store the dialog content for easy hiding/showing
     private Stage dialogStage;   // To manage the dialog window
 
+
     public CustomerView(Connection connection) {
         // Initialize CustomerDao with the provided connection
         CustomerDao customerDao = new CustomerDao(connection);
@@ -157,7 +158,6 @@ public class CustomerView extends StackPane {
 
         return layout;
     }
-
 
 
     private void toggleSearchVisibility(TextField searchTextField) {

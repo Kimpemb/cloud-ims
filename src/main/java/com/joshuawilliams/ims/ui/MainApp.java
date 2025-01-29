@@ -6,6 +6,7 @@ import com.joshuawilliams.ims.service.ProductService;
 import com.joshuawilliams.ims.dao.EmployeeDao;
 import com.joshuawilliams.ims.service.EmployeeService;
 
+import com.joshuawilliams.ims.service.SupplierService;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -30,6 +31,7 @@ public class MainApp extends Application {
     private Connection connection;
     private ProductService productService;  // ProductService instance
     private EmployeeService employeeService;
+    private SupplierService supplierService = new SupplierService(); // Assuming SupplierService has no constructor params
     private ListView<String> categoryListView;
     private CategoryDao categoryDao;
     private TextField productNameInput; // Declare as a class variable
@@ -175,8 +177,9 @@ public class MainApp extends Application {
 
     public void showSuppliers() {
         contentArea.getChildren().clear();
-        contentArea.getChildren().add(new SuppliersView());
+        contentArea.getChildren().add(new SupplierView(supplierService)); // Pass the service to the SupplierView
     }
+
 
     public void showReports() {
         contentArea.getChildren().clear();

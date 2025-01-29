@@ -92,7 +92,7 @@ public class ProductsView extends VBox {
         mainLayout.setPadding(new Insets(10));
 
         addClickOutsideHandler();  // Add this line
-
+;
         this.getChildren().add(mainLayout);
     }
 
