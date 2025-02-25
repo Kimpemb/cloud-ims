@@ -73,7 +73,8 @@ public class EmployeeDao {
                 rs.getString("performance_review"),
                 rs.getString("employment_type"),
                 rs.getString("emergency_contact"),
-                rs.getString("national_id")
+                rs.getString("national_id"),
+                rs.getString("password") // Added password field
         );
     }
 
@@ -81,12 +82,14 @@ public class EmployeeDao {
 
 
 
-// Add a new employee
+
+    // Add a new employee
     // Add a new employee
     public void addEmployee(Employee employee) {
         String query = "INSERT INTO employees (name, department_id, role_id, email, salary, date_of_birth, hire_date, " +
-                "address, manager_id, phone_number, performance_review, emergency_contact, national_id, status, employment_type) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "address, manager_id, phone_number, performance_review, emergency_contact, national_id, status, " +
+                "employment_type, password) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         logger.info("Preparing to add a new employee with the following details: "
                 + "Name: " + employee.getName() + ", "
@@ -109,131 +112,75 @@ public class EmployeeDao {
             logger.info("Preparing statement with query: " + query);
 
             stmt.setString(1, employee.getName());
-            logger.info("Parameter 1 (Name): " + employee.getName());
-
             stmt.setString(2, employee.getDepartment());
-            logger.info("Parameter 2 (Department ID): " + employee.getDepartment());
-
             stmt.setString(3, employee.getRole());
-            logger.info("Parameter 3 (Role ID): " + employee.getRole());
-
             stmt.setString(4, employee.getEmail());
-            logger.info("Parameter 4 (Email): " + employee.getEmail());
-
             stmt.setDouble(5, employee.getSalary());
-            logger.info("Parameter 5 (Salary): " + employee.getSalary());
-
             stmt.setDate(6, employee.getDateOfBirth() != null ? new Date(employee.getDateOfBirth().getTime()) : null);
-            logger.info("Parameter 6 (Date of Birth): " + employee.getDateOfBirth());
-
             stmt.setDate(7, employee.getHireDate() != null ? new Date(employee.getHireDate().getTime()) : null);
-            logger.info("Parameter 7 (Hire Date): " + employee.getHireDate());
-
             stmt.setString(8, employee.getAddress());
-            logger.info("Parameter 8 (Address): " + employee.getAddress());
-
             stmt.setString(9, employee.getManagerId());
-            logger.info("Parameter 9 (Manager ID): " + employee.getManagerId());
-
             stmt.setString(10, employee.getPhoneNumber());
-            logger.info("Parameter 10 (Phone Number): " + employee.getPhoneNumber());
-
             stmt.setString(11, employee.getPerformanceReview());
-            logger.info("Parameter 11 (Performance Review): " + employee.getPerformanceReview());
-
             stmt.setString(12, employee.getEmergencyContact());
-            logger.info("Parameter 12 (Emergency Contact): " + employee.getEmergencyContact());
-
             stmt.setString(13, employee.getNationalId());
-            logger.info("Parameter 13 (National ID): " + employee.getNationalId());
-
             stmt.setString(14, employee.getStatus());
-            logger.info("Parameter 14 (Status): " + employee.getStatus());
-
             stmt.setString(15, employee.getEmploymentType());
-            logger.info("Parameter 15 (Employment Type): " + employee.getEmploymentType());
+            stmt.setString(16, employee.getPassword()); // Added password field
 
             logger.info("Executing query...");
             stmt.executeUpdate();
             logger.info("Query executed successfully. Employee added.");
         } catch (SQLException e) {
-            // Using SLF4J error logging
             logger.error("Error occurred while adding a new employee: {}", e.getMessage(), e);
             throw new RuntimeException("Error adding employee: " + e.getMessage(), e);
         }
     }
 
 
-
-    // Update an existing employee
     public void updateEmployee(Employee employee) {
         String query = "UPDATE employees SET name = ?, department_id = ?, role_id = ?, email = ?, salary = ?, date_of_birth = ?, " +
                 "hire_date = ?, address = ?, manager_id = ?, phone_number = ?, performance_review = ?, emergency_contact = ?, " +
-                "national_id = ?, status = ?, employment_type = ? WHERE id = ?";
+                "national_id = ?, status = ?, employment_type = ?";
+
+        // Include password update if provided
+        if (employee.getPassword() != null && !employee.getPassword().isEmpty()) {
+            query += ", password = ?";
+        }
+
+        query += " WHERE id = ?";
 
         logger.info("Initiating the process to update employee with ID: {}", employee.getId());
 
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            // Log query structure once
-            logger.debug("SQL Query: {}", query);
-
-            // Set query parameters and log each parameter
+            // Set standard parameters
             stmt.setString(1, employee.getName());
-            logger.debug("Set Parameter 1 (Name): {}", employee.getName());
-
             stmt.setString(2, employee.getDepartment());
-            logger.debug("Set Parameter 2 (Department ID): {}", employee.getDepartment());
-
             stmt.setString(3, employee.getRole());
-            logger.debug("Set Parameter 3 (Role ID): {}", employee.getRole());
-
             stmt.setString(4, employee.getEmail());
-            logger.debug("Set Parameter 4 (Email): {}", employee.getEmail());
-
             stmt.setDouble(5, employee.getSalary());
-            logger.debug("Set Parameter 5 (Salary): {}", employee.getSalary());
-
-            // Convert java.util.Date to java.sql.Date for Date of Birth
-            java.util.Date utilDateOfBirth = employee.getDateOfBirth();  // Get java.util.Date
-            java.sql.Date sqlDateOfBirth = (utilDateOfBirth != null) ? new java.sql.Date(utilDateOfBirth.getTime()) : null;
-            stmt.setDate(6, sqlDateOfBirth);
-            logger.debug("Set Parameter 6 (Date of Birth): {}", (utilDateOfBirth != null ? utilDateOfBirth.toString() : "null"));
-
-            // Convert java.util.Date to java.sql.Date for Hire Date
-            java.util.Date utilHireDate = employee.getHireDate();  // Get java.util.Date
-            java.sql.Date sqlHireDate = (utilHireDate != null) ? new java.sql.Date(utilHireDate.getTime()) : null;
-            stmt.setDate(7, sqlHireDate);
-            logger.debug("Set Parameter 7 (Hire Date): {}", (utilHireDate != null ? utilHireDate.toString() : "null"));
-
+            stmt.setDate(6, employee.getDateOfBirth() != null ? new java.sql.Date(employee.getDateOfBirth().getTime()) : null);
+            stmt.setDate(7, employee.getHireDate() != null ? new java.sql.Date(employee.getHireDate().getTime()) : null);
             stmt.setString(8, employee.getAddress());
-            logger.debug("Set Parameter 8 (Address): {}", employee.getAddress());
-
             stmt.setString(9, employee.getManagerId());
-            logger.debug("Set Parameter 9 (Manager ID): {}", employee.getManagerId());
-
             stmt.setString(10, employee.getPhoneNumber());
-            logger.debug("Set Parameter 10 (Phone Number): {}", employee.getPhoneNumber());
-
             stmt.setString(11, employee.getPerformanceReview());
-            logger.debug("Set Parameter 11 (Performance Review): {}", employee.getPerformanceReview());
-
             stmt.setString(12, employee.getEmergencyContact());
-            logger.debug("Set Parameter 12 (Emergency Contact): {}", employee.getEmergencyContact());
-
             stmt.setString(13, employee.getNationalId());
-            logger.debug("Set Parameter 13 (National ID): {}", employee.getNationalId());
-
             stmt.setString(14, employee.getStatus());
-            logger.debug("Set Parameter 14 (Status): {}", employee.getStatus());
-
             stmt.setString(15, employee.getEmploymentType());
-            logger.debug("Set Parameter 15 (Employment Type): {}", employee.getEmploymentType());
 
-            stmt.setString(16, employee.getId()); // Assuming employee ID is a String
-            logger.debug("Set Parameter 16 (Employee ID): {}", employee.getId());
+            int parameterIndex = 16;
 
-            // Execute the update
-            logger.info("Executing update for employee with ID: {}", employee.getId());
+            // Set password if provided
+            if (employee.getPassword() != null && !employee.getPassword().isEmpty()) {
+                stmt.setString(parameterIndex++, employee.getPassword());
+                logger.debug("Set Password Parameter");
+            }
+
+            stmt.setString(parameterIndex, employee.getId());
+            logger.debug("Set Employee ID Parameter: {}", employee.getId());
+
             int rowsUpdated = stmt.executeUpdate();
             if (rowsUpdated > 0) {
                 logger.info("Employee with ID: {} updated successfully.", employee.getId());

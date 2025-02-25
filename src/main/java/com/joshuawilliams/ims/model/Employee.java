@@ -9,6 +9,7 @@ public class Employee {
     private StringProperty department;
     private StringProperty phoneNumber;
     private StringProperty email;
+    private StringProperty password;
     private StringProperty status;
     private ObjectProperty<Date> dateOfBirth; // java.sql.Date
     private ObjectProperty<Date> hireDate;
@@ -24,7 +25,7 @@ public class Employee {
     public Employee(String id, String name, String role, String department, String phoneNumber, String email,
                     String status, Date dateOfBirth, Date hireDate, String address, String managerId,
                     double salary, String performanceReview, String employmentType, String emergencyContact,
-                    String nationalId) {
+                    String nationalId, String password) {
         this.id = new SimpleStringProperty(id);
         this.name = new SimpleStringProperty(name);
         this.role = new SimpleStringProperty(role);
@@ -32,7 +33,7 @@ public class Employee {
         this.phoneNumber = new SimpleStringProperty(phoneNumber);
         this.email = new SimpleStringProperty(email);
         this.status = new SimpleStringProperty(status);
-        this.dateOfBirth = new SimpleObjectProperty<>(dateOfBirth); // java.sql.Date
+        this.dateOfBirth = new SimpleObjectProperty<>(dateOfBirth);
         this.hireDate = new SimpleObjectProperty<>(hireDate);
         this.address = new SimpleStringProperty(address);
         this.managerId = new SimpleStringProperty(managerId);
@@ -41,9 +42,10 @@ public class Employee {
         this.employmentType = new SimpleStringProperty(employmentType);
         this.emergencyContact = new SimpleStringProperty(emergencyContact);
         this.nationalId = new SimpleStringProperty(nationalId);
+        this.password = new SimpleStringProperty(password); // Added password field
     }
 
-    // No-argument constructor
+
     // No-argument constructor for flexibility in object creation (e.g., frameworks, collections),
 // and parameterized constructor for convenient, direct initialization with values.
 
@@ -54,6 +56,7 @@ public class Employee {
         this.department = new SimpleStringProperty();
         this.phoneNumber = new SimpleStringProperty();
         this.email = new SimpleStringProperty();
+        this.password = new SimpleStringProperty(); // For no-argument constructor
         this.status = new SimpleStringProperty();
         this.dateOfBirth = new SimpleObjectProperty<>();
         this.hireDate = new SimpleObjectProperty<>();
@@ -136,6 +139,18 @@ public class Employee {
 
     public StringProperty emailProperty() {
         return email;
+    }
+
+    public String getPassword() {
+        return password.get();
+    }
+
+    public void setPassword(String password) {
+        this.password.set(password);
+    }
+
+    public StringProperty passwordProperty() {
+        return password;
     }
 
     public String getStatus() {

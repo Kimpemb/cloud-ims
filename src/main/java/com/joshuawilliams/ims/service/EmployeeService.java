@@ -3,6 +3,7 @@ package com.joshuawilliams.ims.service;
 import com.joshuawilliams.ims.dao.EmployeeDao;
 import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.utils.EmailValidator;
+import com.joshuawilliams.ims.utils.PasswordUtils;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -32,7 +33,7 @@ public class EmployeeService {
 
     public boolean addEmployee(Employee employee) {
         try {
-            // Validate email before proceeding
+            // Validate email
             if (!EmailValidator.isValidEmail(employee.getEmail())) {
                 throw new IllegalArgumentException("Invalid email address.");
             }
@@ -47,27 +48,87 @@ public class EmployeeService {
                 throw new IllegalArgumentException("Hire date cannot be in the future.");
             }
 
-            // Business logic before adding an employee, if any
+            // Validate Password
+            if (!isValidPassword(employee.getPassword())) {
+                throw new IllegalArgumentException("Password must be at least 8 characters, including a number and a special character.");
+            }
+
+            // Hash Password before saving
+            String hashedPassword = PasswordUtils.hashPassword(employee.getPassword());
+            employee.setPassword(hashedPassword);
+
+            // Add the employee to the database
             employeeDao.addEmployee(employee);
-            return true; // Employee added successfully
+            logger.info("Employee added successfully with ID: {}", employee.getId());
+            return true;
+
         } catch (IllegalArgumentException e) {
-            logger.error("Error adding employee: {}", e.getMessage(), e); // Log the error
+            logger.error("Validation error adding employee: {}", e.getMessage());
+            return false;
+
+        } catch (Exception e) {
+            logger.error("Unexpected error adding employee: {}", e.getMessage(), e);
             return false;
         }
+    }
+
+
+    public boolean isValidPassword(String password) {
+        if (password == null || password.length() < 8) {
+            return false;
+        }
+
+        // Regex to check for at least one uppercase letter, one lowercase letter, one digit, and one special character
+        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
+
+        return password.matches(passwordPattern);
     }
 
 
 
     public boolean updateEmployee(Employee employee) {
         try {
-            // Business logic before updating an employee, if any
+            // Validate email
+            if (!EmailValidator.isValidEmail(employee.getEmail())) {
+                throw new IllegalArgumentException("Invalid email address.");
+            }
+
+            // Validate Date of Birth
+            if (!isValidDateOfBirth(employee.getDateOfBirth())) {
+                throw new IllegalArgumentException("Employee must be at least 18 years old.");
+            }
+
+            // Validate Hire Date
+            if (!isValidHireDate(employee.getHireDate())) {
+                throw new IllegalArgumentException("Hire date cannot be in the future.");
+            }
+
+            // Validate and Hash Password (if provided)
+            if (employee.getPassword() != null && !employee.getPassword().isEmpty()) {
+                if (!isValidPassword(employee.getPassword())) {
+                    throw new IllegalArgumentException("Password must be at least 8 characters, including a number and a special character.");
+                }
+                // Hash the password before updating
+                String hashedPassword = PasswordUtils.hashPassword(employee.getPassword());
+                employee.setPassword(hashedPassword);
+            }
+
+            // Update the employee
             employeeDao.updateEmployee(employee);
-            return true; // Employee updated successfully
+            logger.info("Employee updated successfully with ID: {}", employee.getId());
+            return true;
+
+        } catch (IllegalArgumentException e) {
+            logger.error("Validation error updating employee: {}", e.getMessage());
+            return false;
+
         } catch (Exception e) {
-            logger.error("Error updating employee: {}", e.getMessage(), e); // Log the error
+            logger.error("Unexpected error updating employee: {}", e.getMessage(), e);
             return false;
         }
     }
+
+
 
     public boolean deleteEmployee(String employeeId) {
         try {

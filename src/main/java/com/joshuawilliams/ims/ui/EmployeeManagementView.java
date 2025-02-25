@@ -7,6 +7,7 @@ import com.joshuawilliams.ims.model.Department;
 import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.service.EmployeeService;
 
+import com.joshuawilliams.ims.utils.PasswordUtils;
 import com.joshuawilliams.ims.utils.UIHelper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -167,6 +168,7 @@ public class EmployeeManagementView {
 
 
 
+
     private void showEditEmployeeDialog(Stage ownerStage, Employee selectedEmployee) {
         if (selectedEmployee == null) {
             showAlert(Alert.AlertType.ERROR, "No Employee Selected", "Please select an employee to edit.");
@@ -184,6 +186,7 @@ public class EmployeeManagementView {
         grid.setHgap(10);
         grid.setPadding(new Insets(10));
 
+        // Text fields for employee details
         TextField nameField = new TextField(selectedEmployee.getName());
         TextField emailField = new TextField(selectedEmployee.getEmail());
 
@@ -195,15 +198,8 @@ public class EmployeeManagementView {
 
         TextField salaryField = new TextField(String.valueOf(selectedEmployee.getSalary()));
 
-        // Convert java.sql.Date to LocalDate
-        java.sql.Date sqlDate = selectedEmployee.getDateOfBirth();
-        LocalDate localDate = sqlDate != null ? sqlDate.toLocalDate() : null;
-        DatePicker dobPicker = new DatePicker(localDate);
-
-        // Hire Date
-        sqlDate = selectedEmployee.getHireDate();
-        localDate = sqlDate != null ? sqlDate.toLocalDate() : null;
-        DatePicker hireDatePicker = new DatePicker(localDate);
+        DatePicker dobPicker = new DatePicker(selectedEmployee.getDateOfBirth().toLocalDate());
+        DatePicker hireDatePicker = new DatePicker(selectedEmployee.getHireDate().toLocalDate());
 
         TextField addressField = new TextField(selectedEmployee.getAddress());
         TextField managerIdField = new TextField(selectedEmployee.getManagerId());
@@ -218,6 +214,10 @@ public class EmployeeManagementView {
         TextField performanceReviewField = new TextField(selectedEmployee.getPerformanceReview());
         TextField emergencyContactField = new TextField(selectedEmployee.getEmergencyContact());
         TextField nationalIdField = new TextField(selectedEmployee.getNationalId());
+
+        // Add a password field (optional)
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Leave blank to keep current password");
 
         // Add labels and fields to the grid
         grid.add(new Label("Name:"), 0, 0);
@@ -250,6 +250,8 @@ public class EmployeeManagementView {
         grid.add(emergencyContactField, 1, 13);
         grid.add(new Label("National ID:"), 0, 14);
         grid.add(nationalIdField, 1, 14);
+        grid.add(new Label("Password:"), 0, 15);
+        grid.add(passwordField, 1, 15);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -275,6 +277,17 @@ public class EmployeeManagementView {
                 selectedEmployee.setEmergencyContact(emergencyContactField.getText());
                 selectedEmployee.setNationalId(nationalIdField.getText());
 
+                // Handle password validation and hashing if provided
+                String newPassword = passwordField.getText();
+                if (newPassword != null && !newPassword.isEmpty()) {
+                    if (!employeeService.isValidPassword(newPassword)) {
+                        showAlert(Alert.AlertType.ERROR, "Invalid Password",
+                                "Password must be at least 8 characters, including a number and a special character.");
+                        return null;
+                    }
+                    selectedEmployee.setPassword(PasswordUtils.hashPassword(newPassword));
+                }
+
                 return selectedEmployee;
             }
             return null;
@@ -290,6 +303,7 @@ public class EmployeeManagementView {
             }
         });
     }
+
 
 
 
@@ -452,26 +466,39 @@ public class EmployeeManagementView {
         TextField nationalIdField = new TextField();
         nationalIdField.setPromptText("National ID");
 
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Password");
+
         Button saveButton = new Button("Save");
         saveButton.setOnAction(e -> {
             if (nameField.getText().isEmpty() || departmentDropdown.getValue() == null ||
                     roleDropdown.getValue() == null || emailField.getText().isEmpty() ||
                     statusDropdown.getValue() == null || hireDatePicker.getValue() == null ||
-                    employmentTypeDropdown.getValue() == null || salaryField.getText().isEmpty()) {
+                    employmentTypeDropdown.getValue() == null || salaryField.getText().isEmpty() ||
+                    passwordField.getText().isEmpty()) {
                 showAlert(AlertType.ERROR, "Invalid Input", "Please fill in all required fields.");
                 return;
             }
 
             try {
                 Employee employee = new Employee(
-                        null, nameField.getText(), roleDropdown.getValue(),
-                        departmentDropdown.getValue(), phoneNumberField.getText(), emailField.getText(),
+                        null,
+                        nameField.getText(),
+                        roleDropdown.getValue(),
+                        departmentDropdown.getValue(),
+                        phoneNumberField.getText(),
+                        emailField.getText(),
                         statusDropdown.getValue(),
                         dateOfBirthPicker.getValue() != null ? Date.valueOf(dateOfBirthPicker.getValue()) : null,
-                        Date.valueOf(hireDatePicker.getValue()), addressField.getText(),
-                        managerIdField.getText(), Double.parseDouble(salaryField.getText()),
-                        performanceReviewField.getText(), employmentTypeDropdown.getValue(),
-                        emergencyContactField.getText(), nationalIdField.getText()
+                        Date.valueOf(hireDatePicker.getValue()),
+                        addressField.getText(),
+                        managerIdField.getText(),
+                        Double.parseDouble(salaryField.getText()),
+                        performanceReviewField.getText(),
+                        employmentTypeDropdown.getValue(),
+                        emergencyContactField.getText(),
+                        nationalIdField.getText(),
+                        passwordField.getText() // Added password field
                 );
                 employeeService.addEmployee(employee);
                 showAlert(AlertType.INFORMATION, "Employee Added", "Employee has been added successfully.");
@@ -484,17 +511,19 @@ public class EmployeeManagementView {
         vbox.getChildren().addAll(
                 nameField, departmentDropdown, roleDropdown, emailField, salaryField,
                 dateOfBirthPicker, hireDatePicker, addressField, managerIdField, phoneNumberField,
-                statusDropdown, employmentTypeDropdown, performanceReviewField, emergencyContactField, nationalIdField, saveButton
+                statusDropdown, employmentTypeDropdown, performanceReviewField, emergencyContactField,
+                nationalIdField, passwordField, saveButton
         );
 
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setContent(vbox);
         scrollPane.setFitToWidth(true);
 
-        Scene scene = new Scene(scrollPane, 430, 460);
+        Scene scene = new Scene(scrollPane, 430, 500); // Increased height to accommodate the password field
         dialogStage.setScene(scene);
         dialogStage.show();
     }
+
 
     private TableView<Department> createDepartmentTableView() {
         TableView<Department> tableView = new TableView<>();
@@ -775,7 +804,5 @@ public class EmployeeManagementView {
         alert.setContentText(message);
         alert.showAndWait();
     }
-
-
 
 }
