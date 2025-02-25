@@ -7,6 +7,7 @@ import com.joshuawilliams.ims.model.Department;
 import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.service.EmployeeService;
 
+import com.joshuawilliams.ims.utils.EmailValidator;
 import com.joshuawilliams.ims.utils.PasswordUtils;
 import com.joshuawilliams.ims.utils.UIHelper;
 import javafx.collections.FXCollections;
@@ -215,7 +216,7 @@ public class EmployeeManagementView {
         TextField emergencyContactField = new TextField(selectedEmployee.getEmergencyContact());
         TextField nationalIdField = new TextField(selectedEmployee.getNationalId());
 
-        // Add a password field (optional)
+        // Password field (optional)
         PasswordField passwordField = new PasswordField();
         passwordField.setPromptText("Leave blank to keep current password");
 
@@ -261,34 +262,55 @@ public class EmployeeManagementView {
 
         dialog.setResultConverter(buttonType -> {
             if (buttonType == saveButtonType) {
-                selectedEmployee.setName(nameField.getText());
-                selectedEmployee.setEmail(emailField.getText());
-                selectedEmployee.setDepartment(departmentDropdown.getValue());
-                selectedEmployee.setRole(roleDropdown.getValue());
-                selectedEmployee.setSalary(Double.parseDouble(salaryField.getText()));
-                selectedEmployee.setDateOfBirth(java.sql.Date.valueOf(dobPicker.getValue()));
-                selectedEmployee.setHireDate(java.sql.Date.valueOf(hireDatePicker.getValue()));
-                selectedEmployee.setAddress(addressField.getText());
-                selectedEmployee.setManagerId(managerIdField.getText());
-                selectedEmployee.setPhoneNumber(phoneNumberField.getText());
-                selectedEmployee.setStatus(statusDropdown.getValue());
-                selectedEmployee.setEmploymentType(employmentTypeDropdown.getValue());
-                selectedEmployee.setPerformanceReview(performanceReviewField.getText());
-                selectedEmployee.setEmergencyContact(emergencyContactField.getText());
-                selectedEmployee.setNationalId(nationalIdField.getText());
-
-                // Handle password validation and hashing if provided
-                String newPassword = passwordField.getText();
-                if (newPassword != null && !newPassword.isEmpty()) {
-                    if (!employeeService.isValidPassword(newPassword)) {
-                        showAlert(Alert.AlertType.ERROR, "Invalid Password",
-                                "Password must be at least 8 characters, including a number and a special character.");
+                try {
+                    // Field Validation
+                    if (!EmailValidator.isValidEmail(emailField.getText())) {
+                        showAlert(Alert.AlertType.ERROR, "Invalid Email", "Please enter a valid email address.");
                         return null;
                     }
-                    selectedEmployee.setPassword(PasswordUtils.hashPassword(newPassword));
-                }
 
-                return selectedEmployee;
+                    if (!employeeService.isValidDateOfBirth(java.sql.Date.valueOf(dobPicker.getValue()))) {
+                        showAlert(Alert.AlertType.ERROR, "Invalid Date of Birth", "Employee must be at least 18 years old.");
+                        return null;
+                    }
+
+                    if (!employeeService.isValidHireDate(java.sql.Date.valueOf(hireDatePicker.getValue()))) {
+                        showAlert(Alert.AlertType.ERROR, "Invalid Hire Date", "Hire date cannot be in the future.");
+                        return null;
+                    }
+
+                    selectedEmployee.setName(nameField.getText());
+                    selectedEmployee.setEmail(emailField.getText());
+                    selectedEmployee.setDepartment(departmentDropdown.getValue());
+                    selectedEmployee.setRole(roleDropdown.getValue());
+                    selectedEmployee.setSalary(Double.parseDouble(salaryField.getText()));
+                    selectedEmployee.setDateOfBirth(java.sql.Date.valueOf(dobPicker.getValue()));
+                    selectedEmployee.setHireDate(java.sql.Date.valueOf(hireDatePicker.getValue()));
+                    selectedEmployee.setAddress(addressField.getText());
+                    selectedEmployee.setManagerId(managerIdField.getText());
+                    selectedEmployee.setPhoneNumber(phoneNumberField.getText());
+                    selectedEmployee.setStatus(statusDropdown.getValue());
+                    selectedEmployee.setEmploymentType(employmentTypeDropdown.getValue());
+                    selectedEmployee.setPerformanceReview(performanceReviewField.getText());
+                    selectedEmployee.setEmergencyContact(emergencyContactField.getText());
+                    selectedEmployee.setNationalId(nationalIdField.getText());
+
+                    // Password validation and hashing
+                    String newPassword = passwordField.getText();
+                    if (newPassword != null && !newPassword.isEmpty()) {
+                        if (!employeeService.isValidPassword(newPassword)) {
+                            showAlert(Alert.AlertType.ERROR, "Invalid Password",
+                                    "Password must be at least 8 characters, including a number and a special character.");
+                            return null;
+                        }
+                        selectedEmployee.setPassword(PasswordUtils.hashPassword(newPassword));
+                    }
+
+                    return selectedEmployee;
+
+                } catch (NumberFormatException e) {
+                    showAlert(Alert.AlertType.ERROR, "Invalid Input", "Please enter a valid salary.");
+                }
             }
             return null;
         });
@@ -303,9 +325,6 @@ public class EmployeeManagementView {
             }
         });
     }
-
-
-
 
 
 

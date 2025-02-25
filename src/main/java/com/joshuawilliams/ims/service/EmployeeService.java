@@ -111,6 +111,10 @@ public class EmployeeService {
                 // Hash the password before updating
                 String hashedPassword = PasswordUtils.hashPassword(employee.getPassword());
                 employee.setPassword(hashedPassword);
+            } else {
+                // Preserve the existing password if no new password is provided
+                employeeDao.getEmployeeById(employee.getId())
+                        .ifPresent(existingEmployee -> employee.setPassword(existingEmployee.getPassword()));
             }
 
             // Update the employee
@@ -188,7 +192,7 @@ public class EmployeeService {
     }
 
 
-    private boolean isValidHireDate(Date hireDate) {
+    public boolean isValidHireDate(Date hireDate) {
         if (hireDate == null) {
             return false; // Hire date is required
         }
@@ -197,7 +201,7 @@ public class EmployeeService {
         return !hireDate.after(currentDate); // Hire date should not be after the current date
     }
 
-    private boolean isValidDateOfBirth(Date dateOfBirth) {
+    public boolean isValidDateOfBirth(Date dateOfBirth) {
         if (dateOfBirth == null) {
             return false; // Date of birth is required
         }
