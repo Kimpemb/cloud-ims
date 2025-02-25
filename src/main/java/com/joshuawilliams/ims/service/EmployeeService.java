@@ -74,15 +74,20 @@ public class EmployeeService {
 
 
     public boolean isValidPassword(String password) {
-        if (password == null || password.length() < 8) {
+        if (password == null || password.isEmpty()) {
             return false;
         }
 
-        // Regex to check for at least one uppercase letter, one lowercase letter, one digit, and one special character
-        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
+        // If the password is already hashed, skip pattern validation
+        if (PasswordUtils.isHashed(password)) {
+            return true;
+        }
 
+        // Pattern validation for plain-text passwords
+        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
         return password.matches(passwordPattern);
     }
+
 
 
 
@@ -103,21 +108,28 @@ public class EmployeeService {
                 throw new IllegalArgumentException("Hire date cannot be in the future.");
             }
 
-            // Validate and Hash Password (if provided)
-            if (employee.getPassword() != null && !employee.getPassword().isEmpty()) {
-                if (!isValidPassword(employee.getPassword())) {
-                    throw new IllegalArgumentException("Password must be at least 8 characters, including a number and a special character.");
+            // Password validation and hashing
+            if (employee.getPassword() != null) {
+                if (!employee.getPassword().isEmpty()) {
+                    logger.debug("Validating password for employee ID: {}", employee.getId());
+                    if (!isValidPassword(employee.getPassword())) {
+                        logger.debug("Password validation failed for: {}", employee.getPassword());
+                        throw new IllegalArgumentException("Password must be at least 8 characters, including a number and a special character.");
+                    }
+                    logger.debug("Password validation passed.");
+
+                    // Hash the password before updating
+                    String hashedPassword = PasswordUtils.hashPassword(employee.getPassword());
+                    employee.setPassword(hashedPassword);
+                } else {
+                    // Retain existing password if the provided one is empty
+                    logger.debug("No new password provided. Retaining existing password for employee ID: {}", employee.getId());
+                    employeeDao.getEmployeeById(employee.getId())
+                            .ifPresent(existingEmployee -> employee.setPassword(existingEmployee.getPassword()));
                 }
-                // Hash the password before updating
-                String hashedPassword = PasswordUtils.hashPassword(employee.getPassword());
-                employee.setPassword(hashedPassword);
-            } else {
-                // Preserve the existing password if no new password is provided
-                employeeDao.getEmployeeById(employee.getId())
-                        .ifPresent(existingEmployee -> employee.setPassword(existingEmployee.getPassword()));
             }
 
-            // Update the employee
+            // Proceed with employee update
             employeeDao.updateEmployee(employee);
             logger.info("Employee updated successfully with ID: {}", employee.getId());
             return true;
