@@ -3,6 +3,7 @@ package com.joshuawilliams.ims.dao;
 import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.utils.UIHelper;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Alert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -232,6 +233,26 @@ public class EmployeeDao {
         } catch (SQLException e) {
             UIHelper.showAlert(Alert.AlertType.ERROR, "Error", "An error occurred while adding the department: " + e.getMessage());
         }
+    }
+
+    public Optional<Employee> getEmployeeByEmail(String email) {
+        String query = "SELECT * FROM employees WHERE email = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setString(1, email);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    Employee employee = new Employee();
+                    employee.setEmail(rs.getString("email"));  // Using String for email
+                    employee.setPassword(rs.getString("password"));  // Using String for password
+                    // Set other fields similarly...
+                    return Optional.of(employee);
+                }
+            }
+        } catch (SQLException e) {
+            logger.error("Error fetching employee by email: {}", email, e);
+        }
+        return Optional.empty();
     }
 
 

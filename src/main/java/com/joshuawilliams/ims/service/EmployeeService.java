@@ -5,6 +5,7 @@ import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.utils.EmailValidator;
 import com.joshuawilliams.ims.utils.PasswordUtils;
 
+import javax.security.auth.login.LoginException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -156,6 +157,28 @@ public class EmployeeService {
             return false;
         }
     }
+
+    public Optional<Employee> login(String email, String password) throws LoginException {
+        try {
+            Optional<Employee> optionalEmployee = employeeDao.getEmployeeByEmail(email);
+            if (optionalEmployee.isPresent()) {
+                Employee employee = optionalEmployee.get();
+                if (PasswordUtils.verifyPassword(password, employee.getPassword())) {
+                    return Optional.of(employee);
+                } else {
+                    throw new LoginException("Invalid password for email: " + email);
+                }
+            } else {
+                throw new LoginException("No employee found with email: " + email);
+            }
+        } catch (Exception e) {
+            logger.error("Error during login: {}", e.getMessage(), e);
+            throw new LoginException("An error occurred during login.");
+        }
+    }
+
+
+
 
     public boolean addDepartment(String name, String code, String description, String managerName, String email, String location, String status) {
         try {
