@@ -2,6 +2,7 @@ package com.joshuawilliams.ims.dao;
 
 import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.model.Employee;
+import com.joshuawilliams.ims.utils.PasswordUtils;
 import com.joshuawilliams.ims.utils.UIHelper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Alert;
@@ -12,6 +13,8 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import static com.joshuawilliams.ims.utils.PasswordUtils.hashPassword;
 
 public class EmployeeDao {
     // Use SLF4J LoggerFactory for logging
@@ -268,5 +271,76 @@ public class EmployeeDao {
             UIHelper.showAlert(Alert.AlertType.ERROR, "Database Error", "Failed to add role: " + e.getMessage());
         }
     }
+
+    public void ensureDefaultAdminExists() throws SQLException {
+        String adminRoleQuery = "SELECT id FROM roles WHERE LOWER(role_name) = 'admin' LIMIT 1";
+        String createAdminRoleQuery = "INSERT INTO roles (role_name) VALUES ('Admin')";
+        String adminCheckQuery = "SELECT * FROM employees WHERE role_id = ? LIMIT 1";
+        String createAdminQuery = "INSERT INTO employees (name, email, password, role_id, status, is_default_password) " +
+                "VALUES ('System Admin', 'admin@system.com', ?, ?, 'Active', TRUE)";
+
+        try (Connection connection = DatabaseConnection.getConnection();
+             PreparedStatement checkRoleStmt = connection.prepareStatement(adminRoleQuery);
+             PreparedStatement createRoleStmt = connection.prepareStatement(createAdminRoleQuery, Statement.RETURN_GENERATED_KEYS);
+             PreparedStatement checkAdminStmt = connection.prepareStatement(adminCheckQuery);
+             PreparedStatement createAdminStmt = connection.prepareStatement(createAdminQuery)) {
+
+            // 1. Check or Create "Admin" Role
+            int adminRoleId;
+            ResultSet roleResultSet = checkRoleStmt.executeQuery();
+
+            if (roleResultSet.next()) {
+                adminRoleId = roleResultSet.getInt("id");
+            } else {
+                createRoleStmt.executeUpdate();
+                ResultSet generatedKeys = createRoleStmt.getGeneratedKeys();
+                adminRoleId = generatedKeys.next() ? generatedKeys.getInt(1) : -1;
+
+                if (adminRoleId == -1) {
+                    throw new SQLException("Failed to create 'Admin' role, no ID obtained.");
+                }
+            }
+
+            // 2. Check if Default Admin Exists
+            checkAdminStmt.setInt(1, adminRoleId);
+            ResultSet adminResultSet = checkAdminStmt.executeQuery();
+
+            if (!adminResultSet.next()) {
+                // 3. Create Default Admin Account
+                String hashedPassword = PasswordUtils.hashPassword("Admin@1234");
+                createAdminStmt.setString(1, hashedPassword);
+                createAdminStmt.setInt(2, adminRoleId);
+                createAdminStmt.executeUpdate();
+
+                System.out.println("Default admin created with email: admin@system.com and password: Admin@1234");
+            }
+        }
+    }
+
+
+    // Method to update the password by email
+    public boolean updatePasswordByEmail(String email, String hashedPassword) throws SQLException {
+        String query = "UPDATE employees SET password = ? WHERE email = ?";
+        try (PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setString(1, hashedPassword);
+            statement.setString(2, email);
+            return statement.executeUpdate() > 0;
+        }
+    }
+
+    // In EmployeeDao.java
+    public boolean isDefaultAdminPassword(String email) throws SQLException {
+        String query = "SELECT * FROM employees WHERE email = ? AND password = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setString(1, email);
+            stmt.setString(2, PasswordUtils.hashPassword("Admin@1234")); // Default password
+            ResultSet resultSet = stmt.executeQuery();
+            return resultSet.next();
+        }
+    }
+
+
+
+
 
 }

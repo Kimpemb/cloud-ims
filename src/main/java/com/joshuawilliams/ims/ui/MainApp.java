@@ -1,13 +1,14 @@
 package com.joshuawilliams.ims.ui;
 
+import com.joshuawilliams.ims.controller.LoginController;
+import com.joshuawilliams.ims.dao.*;
 import com.joshuawilliams.ims.database.DatabaseConnection;
-import com.joshuawilliams.ims.dao.CategoryDao;
-import com.joshuawilliams.ims.service.ProductService;
-import com.joshuawilliams.ims.dao.EmployeeDao;
-import com.joshuawilliams.ims.service.EmployeeService;
+import com.joshuawilliams.ims.service.*;
 
-import com.joshuawilliams.ims.service.SupplierService;
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
@@ -19,18 +20,27 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
+import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Collections;
 
 public class MainApp extends Application {
 
+    private static MainApp instance; // Singleton instance
+    private static String loggedInUserEmail;
     private BorderPane mainLayout;
     private StackPane contentArea;
     private Stage primaryStage; // Declare primaryStage at the class level
     private Connection connection;
-    private ProductService productService;  // ProductService instance
-    private EmployeeService employeeService;
+
+
+
+    private CustomerService customerService;
+    private OrderService orderService;
+    private ProductService productService;    private EmployeeService employeeService;
+    private EmployeeDao employeeDao = new EmployeeDao(connection); // Initialize EmployeeDao
     private SupplierService supplierService = new SupplierService(); // Assuming SupplierService has no constructor params
     private ListView<String> categoryListView;
     private CategoryDao categoryDao;
@@ -43,12 +53,22 @@ public class MainApp extends Application {
     public MainApp() {
         // Initialize the connection during MainApp instantiation
         connection = DatabaseConnection.getConnection();
+
         if (connection != null) {
-            productService = new ProductService(connection); // Initialize productService with the connection
+            // Initialize services with the correct constructor arguments
+            customerService = new CustomerService(new CustomerDao(connection));
+            productService = new ProductService(connection); // Directly pass the connection if that's the expected parameter
+            orderService = new OrderService(new OrderDao(connection), customerService, productService);
+
+            System.out.println("Database connection established successfully.");
         } else {
             System.out.println("Failed to establish database connection.");
         }
     }
+
+
+
+
 
     // Getter method for connection
     public Connection getConnection() {
@@ -62,33 +82,95 @@ public class MainApp extends Application {
         }
     }
 
+    // This method allows setting the logged-in user's email
+    public static void setLoggedInUserEmail(String email) {
+        loggedInUserEmail = email;
+    }
+
+    // You can retrieve the logged-in email with this method if needed
+    public static String getLoggedInUserEmail() {
+        return loggedInUserEmail;
+    }
+
     @Override
     public void start(Stage primaryStage) {
+        instance = this; // Set the singleton instance
         this.primaryStage = primaryStage;
+        primaryStage.setTitle("Inventory Management System");
+        initializeDatabaseAndLoadLogin();
+    }
 
+    public static MainApp getInstance() {
+        return instance;
+    }
+
+
+    private void initializeDatabaseAndLoadLogin() {
         try {
-            // Initialize services, daos, and views
-            // Initialize and configure SideMenu
-            SideMenu sideMenu = new SideMenu(this);  // Pass MainApp to SideMenu
-            mainLayout = new BorderPane();           // Initialize BorderPane
-            mainLayout.setLeft(sideMenu);            // Set SideMenu on the left
-            contentArea = new StackPane();           // Create StackPane for dynamic content
-            mainLayout.setCenter(contentArea);      // Set content area in the center
+            Connection connection = DatabaseConnection.getConnection();
+            if (connection == null) {
+                showError("Database Error", "Failed to connect to the database.");
+                return;
+            }
 
-            // Set up the scene and stage
-            Scene scene = new Scene(mainLayout, 800, 600);
-            primaryStage.setTitle("Inventory Management System");
-            primaryStage.setScene(scene);
-            primaryStage.show();  // Show the stage
+            EmployeeDao employeeDao = new EmployeeDao(connection);
 
-            // Show the default view (e.g., Dashboard)
-            showDashboard();  // Ensure this method loads the dashboard content
+            // Call the method and handle the default admin notification separately
+            employeeDao.ensureDefaultAdminExists();
+
+            // Check if the default admin exists to show the alert
+            if (employeeDao.isDefaultAdminPassword("admin@system.com")) {
+                Platform.runLater(() -> {
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Default Admin Created");
+                    alert.setHeaderText("Admin Account Setup");
+                    alert.setContentText("Email: admin@system.com\nPassword: Admin@1234");
+                    alert.showAndWait();
+                });
+            }
+
+
+            new LoginView().showLoginScreen(primaryStage);
 
         } catch (Exception e) {
             e.printStackTrace();
-            showError("Application Error", "An unexpected error occurred during startup.");
+            showError("Application Error", "An unexpected error occurred: " + e.getMessage());
         }
     }
+
+
+    public void loadAppView(String email) {
+        try {
+            mainLayout = new BorderPane();
+            mainLayout.setLeft(new SideMenu(this)); // Initialize and set the side menu
+
+            contentArea = new StackPane(); // Initialize the content area
+            mainLayout.setCenter(contentArea);
+
+            showDashboard(); // Display the default view
+
+            primaryStage.setScene(new Scene(mainLayout, 800, 600));
+            primaryStage.setTitle("Inventory Management System - Dashboard");
+            primaryStage.show();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Application Error", "An unexpected error occurred: " + e.getMessage());
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // Getter methods for tabPane and categoryTab
     public TabPane getTabPane() {
@@ -127,9 +209,15 @@ public class MainApp extends Application {
 
     // Methods to switch between views
     public void showDashboard() {
-        contentArea.getChildren().clear();
-        contentArea.getChildren().add(new DashboardView());
+        if (contentArea != null) {
+            contentArea.getChildren().clear();
+            contentArea.getChildren().add(new DashboardView());
+        } else {
+            showError("Initialization Error", "Content area is not initialized.");
+            System.out.println("Content area is not initialized.");
+        }
     }
+
 
     public void showProducts() {
         contentArea.getChildren().clear();
@@ -146,7 +234,7 @@ public class MainApp extends Application {
 
     public void showEmployees() {
         EmployeeDao employeeDao = new EmployeeDao(connection);
-        EmployeeService employeeService = new EmployeeService(employeeDao);
+        EmployeeService employeeService = new EmployeeService(employeeDao, connection);
         EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);
 
         contentArea.getChildren().clear();
@@ -172,8 +260,17 @@ public class MainApp extends Application {
 
     public void showOrders() {
         contentArea.getChildren().clear();
-        contentArea.getChildren().add(new OrdersView());
+
+        OrdersView ordersView = new OrdersView(
+                customerService,  // Assuming this is a field in MainApp
+                productService,   // Assuming this is a field in MainApp
+                orderService,     // Assuming this is a field in MainApp
+                primaryStage      // The main Stage or a new Stage instance
+        );
+
+        contentArea.getChildren().add(ordersView);
     }
+
 
     public void showSuppliers() {
         contentArea.getChildren().clear();

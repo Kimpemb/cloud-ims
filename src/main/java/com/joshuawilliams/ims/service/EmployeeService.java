@@ -20,10 +20,12 @@ import static com.joshuawilliams.ims.dao.EmployeeDao.logger;
 
 public class EmployeeService {
     private final EmployeeDao employeeDao;
-    private Connection connection;
+    private final Connection connection;
 
-    public EmployeeService(EmployeeDao employeeDao) {
+    // Constructor to inject EmployeeDao and Connection
+    public EmployeeService(EmployeeDao employeeDao, Connection connection) {
         this.employeeDao = employeeDao;
+        this.connection = connection;  // Initialize the connection
     }
 
     public List<Employee> getAllEmployees() {
@@ -89,7 +91,15 @@ public class EmployeeService {
         return password.matches(passwordPattern);
     }
 
+    // In EmployeeService.java
+    public boolean isDefaultAdminPassword(String email) throws SQLException {
+        return email.equalsIgnoreCase("admin@system.com") &&
+                employeeDao.isDefaultAdminPassword(email);
+    }
 
+    public boolean updatePasswordByEmail(String email, String hashedPassword) throws SQLException {
+        return employeeDao.updatePasswordByEmail(email, hashedPassword);
+    }
 
 
     public boolean updateEmployee(Employee employee) {
@@ -161,21 +171,30 @@ public class EmployeeService {
     public Optional<Employee> login(String email, String password) throws LoginException {
         try {
             Optional<Employee> optionalEmployee = employeeDao.getEmployeeByEmail(email);
-            if (optionalEmployee.isPresent()) {
-                Employee employee = optionalEmployee.get();
-                if (PasswordUtils.verifyPassword(password, employee.getPassword())) {
-                    return Optional.of(employee);
-                } else {
-                    throw new LoginException("Invalid password for email: " + email);
-                }
-            } else {
+
+            if (optionalEmployee.isEmpty()) {
                 throw new LoginException("No employee found with email: " + email);
             }
+
+            Employee employee = optionalEmployee.get();
+            if (!PasswordUtils.verifyPassword(password, employee.getPassword())) {
+                throw new LoginException("Invalid password for email: " + email);
+            }
+
+            return Optional.of(employee);
+
         } catch (Exception e) {
-            logger.error("Error during login: {}", e.getMessage(), e);
-            throw new LoginException("An error occurred during login.");
+            // Wrap other exceptions in a LoginException with a clear message
+            throw new LoginException("An error occurred during login. Please try again.");
         }
     }
+
+
+
+
+
+
+
 
 
 

@@ -395,7 +395,7 @@ public class EmployeeManagementView {
 
             Connection connection = DatabaseConnection.getConnection();  // Get the connection
             EmployeeDao employeeDao = new EmployeeDao(connection); // Pass the connection
-            EmployeeService employeeService = new EmployeeService(employeeDao);
+            EmployeeService employeeService = new EmployeeService(employeeDao, connection);
 
             employeeService.addRole(roleName);
 

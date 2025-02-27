@@ -137,5 +137,25 @@ public class ProductDao {
         return products;
     }
 
+    public Product getProductById(int productId) {
+        String sql = "SELECT * FROM products WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, productId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return new Product(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getDouble("price"),
+                        rs.getInt("quantity"),
+                        rs.getInt("category_id")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 
 }

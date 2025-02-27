@@ -85,6 +85,11 @@ public class ProductService {
         }
     }
 
+    public Product getProductById(int productId) {
+        return productDao.getProductById(productId);
+    }
+
+
     public String getCategoryNameById(int categoryId) {
         String query = "SELECT name FROM categories WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(query)) {

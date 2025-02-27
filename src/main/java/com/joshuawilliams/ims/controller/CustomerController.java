@@ -64,11 +64,6 @@ public class CustomerController {
 
     // Get a list of all customers
     public List<Customer> getAllCustomers() {
-        try {
-            return customerService.getAllCustomers();
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Error retrieving all customers", e);
-            return new ArrayList<>(); // Return empty list in case of failure
-        }
+        return customerService.getAllCustomers();
     }
 }

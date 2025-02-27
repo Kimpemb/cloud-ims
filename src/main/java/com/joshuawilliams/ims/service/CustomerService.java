@@ -6,6 +6,7 @@ import com.joshuawilliams.ims.model.Customer;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.logging.Level;
@@ -41,8 +42,13 @@ public class CustomerService {
     }
 
     // Method to fetch all customers
-    public List<Customer> getAllCustomers() throws SQLException {
-        return customerDao.getAllCustomers();  // Get all customers from DAO
+    public List<Customer> getAllCustomers() {
+        try {
+            return customerDao.getAllCustomers();  // Get all customers from DAO
+        } catch (SQLException e) {
+            e.printStackTrace();  // Log the exception (you can use a logger instead)
+            return new ArrayList<>();  // Return an empty list on failure
+        }
     }
 
     // Method to update a customer's information

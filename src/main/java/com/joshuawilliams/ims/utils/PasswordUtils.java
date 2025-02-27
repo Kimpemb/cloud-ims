@@ -30,4 +30,7 @@ public class PasswordUtils {
     public static boolean isHashed(String password) {
         return password != null && password.matches("^[a-fA-F0-9]{64}$");
     }
+
+
+
 }

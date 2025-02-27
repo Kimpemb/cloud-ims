@@ -197,15 +197,17 @@ public class CustomerView extends StackPane {
 
 
     // Fetch customers from the service
+    // Fetch customers from the service
     public ObservableList<Customer> fetchAllCustomers() {
         try {
-            List<Customer> customers = customerService.getAllCustomers();  // Get customers from service
-            return FXCollections.observableArrayList(customers);  // Convert to ObservableList
-        } catch (SQLException e) {
+            List<Customer> customers = customerService.getAllCustomers(); // Get customers from service
+            return FXCollections.observableArrayList(customers); // Convert to ObservableList
+        } catch (Exception e) { // Catch generic exceptions instead
             logger.log(Level.WARNING, "Error fetching customers: ", e);
-            return FXCollections.observableArrayList();  // Return an empty list in case of error
+            return FXCollections.observableArrayList(); // Return an empty list in case of error
         }
     }
+
 
 
 
