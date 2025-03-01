@@ -197,6 +197,21 @@ public class SupplierDao {
         return suppliers;
     }
 
+    // SupplierDao.java
+    public int getTotalSuppliers() {
+        String query = "SELECT COUNT(*) FROM suppliers";
+        try (PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+
     // Helper method to map ResultSet to Supplier object
     private Supplier mapResultSetToSupplier(ResultSet rs) throws SQLException {
         return new Supplier(

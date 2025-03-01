@@ -430,7 +430,7 @@ public class EmployeeManagementView {
 
 
 
-    private void showAddEmployeeDialog(Stage ownerStage) {
+    public void showAddEmployeeDialog(Stage ownerStage) {
         Stage dialogStage = new Stage();
         dialogStage.setTitle("Add Employee");
         dialogStage.initModality(Modality.WINDOW_MODAL);

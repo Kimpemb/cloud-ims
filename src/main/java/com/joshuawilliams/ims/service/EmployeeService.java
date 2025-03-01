@@ -75,6 +75,12 @@ public class EmployeeService {
         }
     }
 
+    // EmployeeService.java
+    public int getTotalEmployees() {
+        return employeeDao.getTotalEmployees();
+    }
+
+
 
     public boolean isValidPassword(String password) {
         if (password == null || password.isEmpty()) {

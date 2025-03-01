@@ -33,6 +33,8 @@ import javafx.scene.control.cell.PropertyValueFactory;
 
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.stage.Window;
+
 import java.util.List;
 import java.sql.SQLException;
 import java.util.logging.Level;
@@ -55,13 +57,9 @@ public class CustomerView extends StackPane {
     private VBox dialogLayout;  // To store the dialog content for easy hiding/showing
     private Stage dialogStage;   // To manage the dialog window
 
-
-    public CustomerView(Connection connection) {
-        // Initialize CustomerDao with the provided connection
-        CustomerDao customerDao = new CustomerDao(connection);
-
-        // Initialize CustomerService with the CustomerDao
-        this.customerService = new CustomerService(customerDao);
+    public CustomerView(CustomerService customerService) {
+        // Initialize CustomerService with the provided service
+        this.customerService = customerService;
 
         // Initialize CustomerController with the CustomerService
         this.customerController = new CustomerController(customerService);  // Initialize the controller here
@@ -72,6 +70,7 @@ public class CustomerView extends StackPane {
         // Initialize UI
         initializeUI();
     }
+
 
 
     private void initializeUI() {
@@ -216,11 +215,13 @@ public class CustomerView extends StackPane {
     private void openAddCustomerDialog() {
         // Create and show the dialog if not already created
         if (dialogStage == null) {
-            createAddCustomerDialog();
+            Window owner = getScene() != null ? getScene().getWindow() : null;
+            createAddCustomerDialog(owner);
         }
 
         dialogStage.showAndWait();
     }
+
 
     private void createCustomer() {
         // Extract and validate loyalty level
@@ -309,7 +310,7 @@ public class CustomerView extends StackPane {
         dialogStage.close();
     }
 
-    private void createAddCustomerDialog() {
+    public void createAddCustomerDialog(Window owner) {
         dialogLayout = new VBox(10);
 
         firstNameField = new TextField();
@@ -327,14 +328,14 @@ public class CustomerView extends StackPane {
         addressField = new TextField();
         addressField.setPromptText("Address");
 
-        dobPicker = new DatePicker(); // Initialize dobPicker
+        dobPicker = new DatePicker();
         dobPicker.setPromptText("Date of Birth (YYYY-MM-DD)");
 
         statusComboBox = new ComboBox<>();
         statusComboBox.getItems().addAll("Active", "Inactive");
         statusComboBox.setPromptText("Select Status");
 
-        loyaltyLevelField = new TextField(); // Renamed from notesField
+        loyaltyLevelField = new TextField();
         loyaltyLevelField.setPromptText("Loyalty Level");
 
         loyaltyLevelComboBox = new ComboBox<>();
@@ -342,13 +343,13 @@ public class CustomerView extends StackPane {
         loyaltyLevelComboBox.getItems().addAll("Bronze", "Silver", "Gold");
 
         notesField = new TextField();
-        notesField.setPromptText("Enter Notes"); // Add a relevant placeholder text
+        notesField.setPromptText("Enter Notes");
 
         createButton = new Button("Create Customer");
-        createButton.setOnAction(event -> createCustomer()); // No arguments passed
+        createButton.setOnAction(event -> createCustomer());
 
         cancelButton = new Button("Cancel");
-        cancelButton.setOnAction(event -> closeAddCustomerDialog());
+        cancelButton.setOnAction(event -> dialogStage.close());
 
         dialogLayout.getChildren().addAll(
                 firstNameField, lastNameField, emailField, phoneField,
@@ -362,13 +363,22 @@ public class CustomerView extends StackPane {
 
         dialogStage = new Stage();
         dialogStage.initModality(Modality.APPLICATION_MODAL);
-        dialogStage.initOwner(this.getScene().getWindow());
+
+        if (owner != null) {
+            dialogStage.initOwner(owner);
+        } else {
+            System.out.println("Warning: No owner window provided. Dialog owner not set.");
+        }
+
         dialogStage.setWidth(450);
         dialogStage.setHeight(400);
         dialogStage.setResizable(false);
         dialogStage.setTitle("Add Customer");
         dialogStage.setScene(new Scene(scrollPane));
+        dialogStage.showAndWait();
     }
+
+
 
     public TableView<Customer> createCustomerTable() {
         // Create TableView for Customer

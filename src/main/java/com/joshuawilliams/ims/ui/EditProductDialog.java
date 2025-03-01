@@ -2,6 +2,7 @@ package com.joshuawilliams.ims.ui;
 
 import com.joshuawilliams.ims.model.Product;
 import com.joshuawilliams.ims.service.ProductService;
+import com.joshuawilliams.ims.dao.ProductDao;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
@@ -38,7 +39,8 @@ public class EditProductDialog {
                 }
 
                 // Check for duplicate product name
-                ProductService productService = new ProductService(connection);
+                ProductDao productDao = new ProductDao(connection);
+                ProductService productService = new ProductService(productDao, connection);
                 if (!newName.equals(product.getName()) && productService.doesProductExist(newName)) {
                     showAlert("Duplicate Product Name", "The product name already exists. Please choose a different name.");
                     return;

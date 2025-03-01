@@ -4,6 +4,7 @@ import com.joshuawilliams.ims.controller.LoginController;
 import com.joshuawilliams.ims.dao.*;
 import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.service.*;
+import com.joshuawilliams.ims.controller.DashboardController;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -11,8 +12,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Button;
@@ -39,32 +39,80 @@ public class MainApp extends Application {
 
     private CustomerService customerService;
     private OrderService orderService;
-    private ProductService productService;    private EmployeeService employeeService;
-    private EmployeeDao employeeDao = new EmployeeDao(connection); // Initialize EmployeeDao
-    private SupplierService supplierService = new SupplierService(); // Assuming SupplierService has no constructor params
+    private ProductService productService;
+    private EmployeeService employeeService;
+
+    private final EmployeeDao employeeDao = new EmployeeDao(connection);
+    private final SupplierDao supplierDao = new SupplierDao(connection);
+    private final CategoryDao categoryDao = new CategoryDao(connection);
+
+    private final SupplierService supplierService;
+
     private ListView<String> categoryListView;
-    private CategoryDao categoryDao;
-    private TextField productNameInput; // Declare as a class variable
+    private TextField productNameInput;
     private TabPane tabPane;
     private Tab categoryManagementTab;
     private Tab categoryTab;
 
     // Constructor to initialize the connection
+
+
+    private final SalesService salesService;
+    private final ActivityLogService activityLogService;
+
+
     public MainApp() {
-        // Initialize the connection during MainApp instantiation
         connection = DatabaseConnection.getConnection();
 
-        if (connection != null) {
-            // Initialize services with the correct constructor arguments
-            customerService = new CustomerService(new CustomerDao(connection));
-            productService = new ProductService(connection); // Directly pass the connection if that's the expected parameter
-            orderService = new OrderService(new OrderDao(connection), customerService, productService);
-
-            System.out.println("Database connection established successfully.");
-        } else {
+        if (connection == null) {
             System.out.println("Failed to establish database connection.");
+            throw new IllegalStateException("Cannot proceed without a database connection.");
         }
+
+        // Initialize DAOs
+        CustomerDao customerDao = new CustomerDao(connection);
+        ProductDao productDao = new ProductDao(connection);
+        OrderDao orderDao = new OrderDao(connection);
+        SupplierDao supplierDao = new SupplierDao(connection);
+
+        // Initialize Services
+        customerService = new CustomerService(customerDao);
+        productService = new ProductService(productDao, connection);
+        orderService = new OrderService(orderDao, customerService, productService);
+        supplierService = new SupplierService(supplierDao, connection); // No 'this.'
+        salesService = new SalesService(connection);
+        activityLogService = new ActivityLogService(connection);
+
+        System.out.println("Database connection established successfully.");
     }
+
+    // Getter methods for service instances
+    public CustomerService getCustomerService() {
+        return customerService;
+    }
+
+    public ProductService getProductService() {
+        return productService;
+    }
+
+    public OrderService getOrderService() {
+        return orderService;
+    }
+
+    public SupplierService getSupplierService() {
+        return supplierService;
+    }
+
+    public SalesService getSalesService() {
+        return salesService;
+    }
+
+    public ActivityLogService getActivityLogService() {
+        return activityLogService;
+    }
+
+
+
 
 
 
@@ -209,14 +257,77 @@ public class MainApp extends Application {
 
     // Methods to switch between views
     public void showDashboard() {
-        if (contentArea != null) {
-            contentArea.getChildren().clear();
-            contentArea.getChildren().add(new DashboardView());
-        } else {
+        if (contentArea == null) {
             showError("Initialization Error", "Content area is not initialized.");
             System.out.println("Content area is not initialized.");
+            return;
         }
+
+        contentArea.getChildren().clear();
+
+        // Initialize UI components
+        Label totalProductsLabel = new Label();
+        Label totalEmployeesLabel = new Label();
+        Label totalCustomersLabel = new Label();
+        Label totalOrdersLabel = new Label();
+        Label totalSuppliersLabel = new Label();
+        Label totalSalesLabel = new Label();
+        VBox recentActivitiesBox = new VBox();
+        Label chartPlaceholder = new Label("📊 Sales Chart Coming Soon!");
+        HBox quickActionsBox = new HBox();
+
+        // Initialize DAOs
+        ProductDao productDao = new ProductDao(connection);
+        EmployeeDao employeeDao = new EmployeeDao(connection);
+        CustomerDao customerDao = new CustomerDao(connection);
+        OrderDao orderDao = new OrderDao(connection);
+        SupplierDao supplierDao = new SupplierDao(connection);
+
+        // Initialize services
+        ProductService productService = new ProductService(productDao, connection);
+        EmployeeService employeeService = new EmployeeService(employeeDao, connection);
+        CustomerService customerService = new CustomerService(customerDao);
+        OrderService orderService = new OrderService(orderDao, customerService, productService);
+        SupplierService supplierService = new SupplierService(supplierDao, connection);
+        SalesService salesService = new SalesService(connection);
+        ActivityLogService activityLogService = new ActivityLogService(connection);
+
+        // Initialize views
+        EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);
+        CustomerView customerView = new CustomerView(customerService);
+        SupplierView supplierView = new SupplierView(supplierService); // Added SupplierView
+
+        // Initialize DashboardController
+        DashboardController dashboardController = new DashboardController(
+                productService, employeeService, customerService, orderService,
+                supplierService, salesService, activityLogService,
+                totalProductsLabel, totalEmployeesLabel, totalCustomersLabel,
+                totalOrdersLabel, totalSuppliersLabel, totalSalesLabel,
+                recentActivitiesBox, chartPlaceholder, quickActionsBox
+        );
+
+        // Create DashboardView with the required dependencies
+        DashboardView dashboardView = new DashboardView(
+                dashboardController, connection, productService, customerService,
+                orderService, employeeManagementView, customerView, supplierView // Added supplierView
+        );
+
+        // Initialize dashboard data
+        dashboardController.initializeDashboard();
+
+        // Display the dashboard
+        contentArea.getChildren().add(dashboardView.getView());
     }
+
+
+
+
+
+
+
+
+
+
 
 
     public void showProducts() {
@@ -249,7 +360,7 @@ public class MainApp extends Application {
         contentArea.getChildren().clear();  // Clear the current content
 
         // Create and add CustomerView to the content area
-        CustomerView customerView = new CustomerView(connection);  // Pass connection if necessary
+        CustomerView customerView = new CustomerView(customerService);  // Pass connection if necessary
         contentArea.getChildren().add(customerView);  // Add to the StackPane (center area)
     }
 

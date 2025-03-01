@@ -15,9 +15,9 @@ public class ProductService {
     private final ProductDao productDao;
     private final Connection connection;
 
-    public ProductService(Connection connection) {
+    public ProductService(ProductDao productDao, Connection connection) {
+        this.productDao = productDao;
         this.connection = connection;
-        this.productDao = new ProductDao(connection);
     }
 
     public boolean addProduct(String name, double price, int quantity, int categoryId) {
@@ -87,6 +87,11 @@ public class ProductService {
 
     public Product getProductById(int productId) {
         return productDao.getProductById(productId);
+    }
+
+    // ProductService.java
+    public int getTotalProducts() {
+        return productDao.getTotalProducts();
     }
 
 

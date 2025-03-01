@@ -127,6 +127,21 @@ public class OrderDao {
     }
 
 
+    // OrderDao.java
+    public int getTotalOrders() {
+        String query = "SELECT COUNT(*) FROM orders";
+        try (PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+
     // Retrieve a specific order by ID
     public Order getOrderById(int orderId) {
         String sql = """

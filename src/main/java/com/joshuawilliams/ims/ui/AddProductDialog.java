@@ -2,6 +2,7 @@ package com.joshuawilliams.ims.ui;
 
 import com.joshuawilliams.ims.service.CategoryService;
 import com.joshuawilliams.ims.service.ProductService;
+import com.joshuawilliams.ims.dao.ProductDao;
 import com.joshuawilliams.ims.utils.CategoryUtils;
 import com.joshuawilliams.ims.model.Category;
 import com.joshuawilliams.ims.dao.CategoryDao;
@@ -110,7 +111,8 @@ public class AddProductDialog {
                     int categoryId = selectedCategory.getId(); // Get category ID from selected Category object
 
                     // Call ProductService to add the product
-                    ProductService productService = new ProductService(connection);
+                    ProductDao productDao = new ProductDao(connection);
+                    ProductService productService = new ProductService(productDao, connection);
                     boolean success = productService.addProduct(name, price, quantity, categoryId);
                     if (success) {
                         callback.insertProduct(name, price, quantity, categoryId);

@@ -14,13 +14,14 @@ public class SupplierView extends VBox {
     private final SupplierService supplierService;
     private TableView<Supplier> supplierTable;
     private TextField searchField;
-    private Button addButton;
-    private Button refreshButton;
+    private Button addButton, refreshButton;
 
     public SupplierView(SupplierService supplierService) {
         this.supplierService = supplierService;
         createUI();
     }
+
+
 
     private void createUI() {
         setPadding(new Insets(10));
@@ -152,7 +153,7 @@ public class SupplierView extends VBox {
         }
     }
 
-    private void showSupplierDialog(Supplier supplier) {
+    public void showSupplierDialog(Supplier supplier) {
         Dialog<Supplier> dialog = new Dialog<>();
         dialog.setTitle(supplier == null ? "Add Supplier" : "Edit Supplier");
         dialog.setHeaderText(supplier == null ? "Enter Supplier Details" : "Edit Supplier Details");

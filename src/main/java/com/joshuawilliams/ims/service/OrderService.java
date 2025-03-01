@@ -56,6 +56,11 @@ public class OrderService {
         return orderDao.getAllOrders();
     }
 
+    // OrderService.java
+    public int getTotalOrders() {
+        return orderDao.getTotalOrders();
+    }
+
     // Retrieve a specific order by ID
     public Order getOrderById(int orderId) {
         return orderDao.getOrderById(orderId);

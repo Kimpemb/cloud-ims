@@ -23,30 +23,38 @@ import javafx.scene.control.Alert.AlertType;
 
 public class ProductsView extends VBox {
 
-    private TableView<Product> productTable;
-    private ProductService productService;
-    private ObservableList<Product> allProducts;
-    private Connection connection;
-    private TextField searchField; // Declare the searchField as an instance variable
+    private final TableView<Product> productTable;
+    private final ProductService productService;
+    private final ObservableList<Product> allProducts = FXCollections.observableArrayList();
+    private final Connection connection;
+    private final TextField searchField; // Instance variable
 
     public ProductsView(Connection connection, MainApp mainApp, TabPane tabPane, Tab categoryManagementTab) {
         this.connection = connection;
-        this.productService = new ProductService(connection);
 
-        // Initialize product table and load data
-        productTable = createProductTable();
+        // Properly assign productService
+        ProductDao productDao = new ProductDao(connection);
+        this.productService = new ProductService(productDao, connection);
 
-        // Initialize the search field
-        searchField = createSearchField();
+        // Load product data
+        allProducts.setAll(productService.getAllProducts());
+
+        // Initialize product table and search field
+        this.productTable = createProductTable();
+        this.searchField = createSearchField();
 
         // Initialize the UI components
         initializeUI(mainApp, tabPane, categoryManagementTab);
     }
 
+
+
     // Create the product table with columns
     private TableView<Product> createProductTable() {
         TableView<Product> table = new TableView<>();
-        allProducts = FXCollections.observableArrayList(productService.getAllProducts());
+
+        // Populate existing allProducts list instead of reassigning
+        allProducts.setAll(productService.getAllProducts());
         table.setItems(allProducts);
 
         // Define columns for product details
@@ -62,6 +70,7 @@ public class ProductsView extends VBox {
 
         return table;
     }
+
 
     // Create a category column that fetches category names
     private TableColumn<Product, String> createCategoryColumn() {
@@ -119,11 +128,24 @@ public class ProductsView extends VBox {
         searchToggleButton.setStyle("-fx-font-size: 13px;");
         searchToggleButton.setOnAction(e -> toggleSearchVisibility());
 
+        // Old Code: Manual Refresh (Risk of Showing Old Data)
+// Button addProductButton = new Button("Add New Product");
+// addProductButton.setOnAction(e -> {
+//     AddProductDialog.show(new Stage(), connection, mainApp::insertProduct);
+//     loadProductData(); // Manual call to refresh data (could run too early!)
+// });
+
+// Corrected Code: Automatic Refresh After Successful Insertion
         Button addProductButton = new Button("Add New Product");
         addProductButton.setOnAction(e -> {
-            AddProductDialog.show(new Stage(), connection, mainApp::insertProduct);
-            loadProductData();
+            AddProductDialog.show(new Stage(), connection, (name, price, quantity, categoryId) -> {
+                mainApp.insertProduct(name, price, quantity, categoryId);
+                loadProductData(); // Ensure data refreshes after adding a product
+            });
         });
+
+
+
 
         Button manageCategoriesButton = new Button("Manage Categories");
         manageCategoriesButton.setOnAction(e -> tabPane.getSelectionModel().select(categoryManagementTab));

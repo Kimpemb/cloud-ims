@@ -137,6 +137,21 @@ public class ProductDao {
         return products;
     }
 
+    // ProductDao.java
+    public int getTotalProducts() {
+        String query = "SELECT COUNT(*) FROM products";
+        try (PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+
     public Product getProductById(int productId) {
         String sql = "SELECT * FROM products WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {

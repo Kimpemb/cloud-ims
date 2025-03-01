@@ -13,11 +13,11 @@ public class SupplierService {
     private final SupplierDao supplierDao;
     private final Connection connection;
 
-    // Constructor
-    public SupplierService() {
-        this.connection = DatabaseConnection.getConnection();
-        this.supplierDao = new SupplierDao(connection);
+    public SupplierService(SupplierDao supplierDao, Connection connection) {
+        this.supplierDao = supplierDao;
+        this.connection = connection;
     }
+
 
     public boolean addSupplier(Supplier supplier) {
         validateSupplier(supplier);
@@ -64,6 +64,12 @@ public class SupplierService {
         validateString(email, "Email");
         return supplierDao.getSuppliersByEmail(email);
     }
+
+    // SupplierService.java
+    public int getTotalSuppliers() {
+        return supplierDao.getTotalSuppliers();
+    }
+
 
     public List<Supplier> searchSuppliersByCategory(String category) {
         validateString(category, "Category");

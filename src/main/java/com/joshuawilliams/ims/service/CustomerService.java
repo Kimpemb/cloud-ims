@@ -97,6 +97,12 @@ public class CustomerService {
         return "CUST-" + datePart + "-" + sequencePart;
     }
 
+    // CustomerService.java
+    public int getTotalCustomers() {
+        return customerDao.getTotalCustomers();
+    }
+
+
     // Helper method to convert an int to formatted String ID for deletion
     private String generateCustomerIdFromInt(int id) {
         // Get current date in format YYYYMMDD

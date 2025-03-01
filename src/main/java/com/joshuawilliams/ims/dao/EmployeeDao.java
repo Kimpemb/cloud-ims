@@ -259,6 +259,21 @@ public class EmployeeDao {
     }
 
 
+    // EmployeeDao.java
+    public int getTotalEmployees() {
+        String query = "SELECT COUNT(*) FROM employees";
+        try (PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+
 
     // Add a new role
     public void addRole(String roleName) {

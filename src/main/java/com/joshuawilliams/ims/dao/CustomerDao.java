@@ -189,6 +189,21 @@ public class CustomerDao {
         return customers;
     }
 
+    // CustomerDao.java
+    public int getTotalCustomers() {
+        String query = "SELECT COUNT(*) FROM customers";
+        try (PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+
     // Helper method to map ResultSet to Customer object
     private Customer mapResultSetToCustomer(ResultSet resultSet) throws SQLException {
         String customerId = resultSet.getString("customer_id");
