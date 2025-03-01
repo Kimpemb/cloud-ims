@@ -22,24 +22,21 @@ public class ProductDao {
     // Method to add a new product to the database
     public boolean addProduct(Product product) {
         String sql = "INSERT INTO products (name, price, quantity, category_id) VALUES (?, ?, ?, ?)";
+
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, product.getName());
             stmt.setDouble(2, product.getPrice());
             stmt.setInt(3, product.getQuantity());
             stmt.setInt(4, product.getCategoryId());
 
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Product added to the database: " + product.getName());
-                return true;
-            } else {
-                System.out.println("Failed to add product to the database: " + product.getName());
-            }
+            return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Error adding product: " + e.getMessage());
+            return false;
         }
-        return false;
     }
+
+
 
 
     // Method to check if a product already exists (case-insensitive check)

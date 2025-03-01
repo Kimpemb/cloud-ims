@@ -58,7 +58,7 @@ public class MainApp extends Application {
 
 
     private final SalesService salesService;
-    private final ActivityLogService activityLogService;
+    private ActivityLogService activityLogService;
 
 
     public MainApp() {
@@ -77,7 +77,9 @@ public class MainApp extends Application {
 
         // Initialize Services
         customerService = new CustomerService(customerDao);
-        productService = new ProductService(productDao, connection);
+        ActivityLogService activityLogService = new ActivityLogService(connection);
+        ProductService productService = new ProductService(productDao, connection);
+        productService.setActivityLogService(activityLogService);
         orderService = new OrderService(orderDao, customerService, productService);
         supplierService = new SupplierService(supplierDao, connection); // No 'this.'
         salesService = new SalesService(connection);
@@ -284,13 +286,14 @@ public class MainApp extends Application {
         SupplierDao supplierDao = new SupplierDao(connection);
 
         // Initialize services
+        ActivityLogService activityLogService = new ActivityLogService(connection);
         ProductService productService = new ProductService(productDao, connection);
+        productService.setActivityLogService(activityLogService); // Set it separately
         EmployeeService employeeService = new EmployeeService(employeeDao, connection);
         CustomerService customerService = new CustomerService(customerDao);
         OrderService orderService = new OrderService(orderDao, customerService, productService);
         SupplierService supplierService = new SupplierService(supplierDao, connection);
         SalesService salesService = new SalesService(connection);
-        ActivityLogService activityLogService = new ActivityLogService(connection);
 
         // Initialize views
         EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);

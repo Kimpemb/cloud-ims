@@ -23,7 +23,7 @@ public class DashboardController {
     public final Label totalOrdersLabel;
     public final Label totalSuppliersLabel;
     public final Label totalSalesLabel;
-    private final VBox recentActivitiesBox;
+    public final VBox recentActivitiesBox;
     private final Label chartPlaceholder;
     public final HBox quickActionsBox;
 
@@ -70,5 +70,19 @@ public class DashboardController {
         totalOrdersLabel.setText("Total Orders: " + orderService.getTotalOrders());
         totalSuppliersLabel.setText("Total Suppliers: " + supplierService.getTotalSuppliers());
         totalSalesLabel.setText("Total Sales Today: $" + salesService.getTodaySales());
+
+        System.out.println("Initializing dashboard...");
+        loadRecentActivities();
     }
+
+    private void loadRecentActivities() {
+        recentActivitiesBox.getChildren().clear();
+        System.out.println("Loading recent activities..."); // Debug line
+        activityLogService.getRecentActivities().forEach(activity -> {
+            System.out.println("Retrieved Activity: " + activity); // Debug line
+            Label activityLabel = new Label(activity);
+            recentActivitiesBox.getChildren().add(activityLabel);
+        });
+    }
+
 }

@@ -5,9 +5,7 @@ import com.joshuawilliams.ims.service.CustomerService;
 import com.joshuawilliams.ims.service.OrderService;
 import com.joshuawilliams.ims.service.ProductService;
 import javafx.geometry.Insets;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.stage.Window;
@@ -47,8 +45,6 @@ public class DashboardView {
         this.orderManagementUI = new OrderManagementUI(customerService, productService, orderService);
     }
 
-
-
     public Pane getView() {
         VBox root = new VBox(10);
         root.setPadding(new Insets(15));
@@ -60,8 +56,13 @@ public class DashboardView {
                 new Separator(),
                 createLabel("Quick Actions", 18, true),
                 createQuickActionsBox(),
-                new Separator()
+                new Separator(),
+                createLabel("Recent Activities", 18, true),
+                dashboardController.recentActivitiesBox // Ensure recent activities are displayed
         );
+
+        dashboardController.initializeDashboard(); // Load data
+
         return root;
     }
 
@@ -96,15 +97,10 @@ public class DashboardView {
                     Window owner = quickActionsBox.getScene() != null ? quickActionsBox.getScene().getWindow() : null;
                     customerView.createAddCustomerDialog(owner);
                 }),
-                createActionButton("Add Supplier", () -> supplierView.showSupplierDialog(null)) // Pass null to indicate new supplier
+                createActionButton("Add Supplier", () -> supplierView.showSupplierDialog(null)) // Pass null for a new supplier
         );
         return quickActionsBox;
     }
-
-
-
-
-
 
     private Button createActionButton(String text, Runnable action) {
         Button button = new Button(text);

@@ -14,15 +14,25 @@ public class ProductService {
 
     private final ProductDao productDao;
     private final Connection connection;
+    private ActivityLogService activityLogService;  // No final, allows reassignment
 
     public ProductService(ProductDao productDao, Connection connection) {
         this.productDao = productDao;
         this.connection = connection;
     }
 
+    // Setter for activityLogService
+    public void setActivityLogService(ActivityLogService activityLogService) {
+        this.activityLogService = activityLogService;
+    }
+
+
+
+
+
     public boolean addProduct(String name, double price, int quantity, int categoryId) {
         if (name == null || name.trim().isEmpty() || price <= 0 || quantity <= 0 || categoryId <= 0) {
-            System.out.println("Invalid input data.");
+            System.out.println("Invalid product data.");
             return false;
         }
 
@@ -32,8 +42,22 @@ public class ProductService {
         }
 
         Product product = new Product(name, price, quantity, categoryId);
-        return productDao.addProduct(product);
+
+        try {
+            if (productDao.addProduct(product)) {
+                if (activityLogService != null) {
+                    activityLogService.logActivity("Added product: " + name);
+                }
+                return true;
+            }
+        } catch (Exception e) {
+            System.err.println("Error adding product: " + e.getMessage());
+        }
+
+        return false;
     }
+
+
 
     public boolean doesProductExist(String name) {
         return name != null && !name.trim().isEmpty() && productDao.doesProductExist(name);

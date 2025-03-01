@@ -1,5 +1,6 @@
 package com.joshuawilliams.ims.ui;
 
+import com.joshuawilliams.ims.service.ActivityLogService;
 import com.joshuawilliams.ims.service.CategoryService;
 import com.joshuawilliams.ims.service.ProductService;
 import com.joshuawilliams.ims.dao.ProductDao;
@@ -112,7 +113,9 @@ public class AddProductDialog {
 
                     // Call ProductService to add the product
                     ProductDao productDao = new ProductDao(connection);
+                    ActivityLogService activityLogService = new ActivityLogService(connection);
                     ProductService productService = new ProductService(productDao, connection);
+                    productService.setActivityLogService(activityLogService);
                     boolean success = productService.addProduct(name, price, quantity, categoryId);
                     if (success) {
                         callback.insertProduct(name, price, quantity, categoryId);
