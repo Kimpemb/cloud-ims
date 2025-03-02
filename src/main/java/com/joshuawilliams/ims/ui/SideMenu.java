@@ -15,6 +15,7 @@ public class SideMenu extends VBox {
         Button notificationsButton = new Button("Notifications");
         Button ordersButton = new Button("Orders");
         Button inventoryButton = new Button("Inventory");
+        Button salesForecastingButton = new Button("Sales Forecasting"); // Added Sales Forecasting button
         Button manageProductsAndCategoriesButton = new Button("Products and Categories");
         Button customersButton = new Button("Customers");
         Button suppliersButton = new Button("Suppliers");
@@ -29,6 +30,7 @@ public class SideMenu extends VBox {
         setUpButtonAction(notificationsButton, mainApp::showNotifications);
         setUpButtonAction(ordersButton, mainApp::showOrders);
         setUpButtonAction(inventoryButton, mainApp::showInventory);
+        setUpButtonAction(salesForecastingButton, mainApp::showSalesForecasting); // Link the new button
         setUpButtonAction(manageProductsAndCategoriesButton, mainApp::showProductAndCategoryManagement);
         setUpButtonAction(customersButton, mainApp::showCustomers);
         setUpButtonAction(suppliersButton, mainApp::showSuppliers);
@@ -44,6 +46,7 @@ public class SideMenu extends VBox {
                 notificationsButton,
                 ordersButton,
                 inventoryButton,
+                salesForecastingButton, // Add it here in the appropriate position
                 manageProductsAndCategoriesButton,
                 customersButton,
                 suppliersButton,

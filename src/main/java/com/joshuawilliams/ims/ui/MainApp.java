@@ -411,6 +411,12 @@ public class MainApp extends Application {
         contentArea.getChildren().add(new InventoryView());
     }
 
+    public void showSalesForecasting() {
+        contentArea.getChildren().clear();
+        contentArea.getChildren().add(new SalesForecastingView());  // Assuming you have a SalesForecastingView class
+    }
+
+
     public void showAuditLogs() {
         contentArea.getChildren().clear();
         contentArea.getChildren().add(new AuditLogsView());
@@ -437,5 +443,6 @@ public class MainApp extends Application {
     public static void main(String[] args) {
         launch(args); // Launches the JavaFX application lifecycle
     }
+
 
 }
