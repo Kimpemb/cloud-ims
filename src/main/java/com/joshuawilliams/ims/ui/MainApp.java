@@ -323,6 +323,10 @@ public class MainApp extends Application {
     }
 
 
+    public void showNotifications() {
+        contentArea.getChildren().clear();  // Clear the current content
+        contentArea.getChildren().add(new NotificationsView());  // Add the Notifications view
+    }
 
 
 
