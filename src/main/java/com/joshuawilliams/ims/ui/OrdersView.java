@@ -29,9 +29,12 @@ public class OrdersView extends BorderPane {
         // Create Order button
         Button openOrderDialogButton = new Button("Create Order");
         openOrderDialogButton.setOnAction(e -> {
+            // Instantiate the OrderManagementUI and create a new Stage
             OrderManagementUI orderManagementUI = new OrderManagementUI(customerService, productService, orderService);
-            orderManagementUI.showOrderForm(primaryStage);
+            Stage newStage = new Stage();  // Create a new Stage for the order form
+            orderManagementUI.showOrderForm(newStage);  // Show the form on the new Stage
         });
+
 
         // Set up the table to display orders
         TableView<Order> orderTable = new TableView<>();

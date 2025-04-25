@@ -16,8 +16,6 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-import javafx.event.ActionEvent;
-
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +30,11 @@ public class OrderManagementUI {
         this.customerService = customerService;
         this.productService = productService;
         this.orderService = orderService;
+
+        // Debug check to ensure productService is not null
+        if (this.productService == null) {
+            System.out.println("Error: ProductService is null in OrderManagementUI!");
+        }
     }
 
     public void showOrderForm(Stage ownerStage) {
@@ -45,8 +48,10 @@ public class OrderManagementUI {
         grid.setVgap(8);
         grid.setHgap(10);
 
+        // Customer ComboBox
         Label customerLabel = new Label("Select Customer:");
         ComboBox<Customer> customerComboBox = new ComboBox<>(FXCollections.observableArrayList(customerService.getAllCustomers()));
+
         customerComboBox.setConverter(new StringConverter<>() {
             @Override
             public String toString(Customer customer) {
@@ -62,18 +67,29 @@ public class OrderManagementUI {
         Button addCustomerButton = new Button("+");
         HBox customerBox = new HBox(5, customerComboBox, addCustomerButton);
 
+        // Product ComboBox
         Label productLabel = new Label("Select Product:");
-        ComboBox<Product> productComboBox = new ComboBox<>(FXCollections.observableArrayList(productService.getAllProducts()));
+        List<Product> products = new ArrayList<>();
+        if (productService != null) {
+            products = productService.getAllProducts();
+        }
+        if (products == null) {
+            products = new ArrayList<>();  // Fallback to an empty list if products are null
+        }
+        ComboBox<Product> productComboBox = new ComboBox<>(FXCollections.observableArrayList(products));
 
+        // Quantity TextField
         Label quantityLabel = new Label("Quantity:");
         TextField quantityField = new TextField();
 
+        // Order Summary TextArea
         TextArea orderSummary = new TextArea();
         orderSummary.setEditable(false);
 
         List<Product> selectedProducts = new ArrayList<>();
         List<Integer> selectedQuantities = new ArrayList<>();
 
+        // OrderController
         OrderController orderController = new OrderController(
                 customerService,
                 orderService,
@@ -83,12 +99,15 @@ public class OrderManagementUI {
                 customerComboBox
         );
 
+        // Add Product Button
         Button addProductButton = new Button("Add Product");
         addProductButton.setOnAction(e -> orderController.addProduct(productComboBox, quantityField));
 
+        // Submit Order Button
         Button submitOrderButton = new Button("Submit Order");
         submitOrderButton.setOnAction(orderController::submitOrder);
 
+        // Layout
         grid.add(customerLabel, 0, 0);
         grid.add(customerBox, 1, 0);
         grid.add(productLabel, 0, 1);
@@ -101,11 +120,13 @@ public class OrderManagementUI {
         layout.setPadding(new Insets(20));
         layout.getChildren().addAll(grid, orderSummary, submitOrderButton);
 
+        // Scene and Stage
         Scene scene = new Scene(layout, 650, 400);
         orderStage.setScene(scene);
         orderStage.showAndWait();
     }
 
+    // Helper method to show alerts
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
