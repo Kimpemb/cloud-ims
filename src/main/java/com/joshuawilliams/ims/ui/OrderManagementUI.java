@@ -1,3 +1,4 @@
+// File: OrderManagementUI.java
 package com.joshuawilliams.ims.ui;
 
 import com.joshuawilliams.ims.controller.OrderController;
@@ -31,7 +32,6 @@ public class OrderManagementUI {
         this.productService = productService;
         this.orderService = orderService;
 
-        // Debug check to ensure productService is not null
         if (this.productService == null) {
             System.out.println("Error: ProductService is null in OrderManagementUI!");
         }
@@ -43,53 +43,56 @@ public class OrderManagementUI {
         orderStage.initModality(Modality.WINDOW_MODAL);
         orderStage.initOwner(ownerStage);
 
+        // Layout setup
         GridPane grid = new GridPane();
         grid.setPadding(new Insets(10));
         grid.setVgap(8);
         grid.setHgap(10);
 
-        // Customer ComboBox
+        // Customer selection
         Label customerLabel = new Label("Select Customer:");
         ComboBox<Customer> customerComboBox = new ComboBox<>(FXCollections.observableArrayList(customerService.getAllCustomers()));
-
         customerComboBox.setConverter(new StringConverter<>() {
             @Override
             public String toString(Customer customer) {
                 return customer != null ? customer.getFirstName() + " " + customer.getLastName() : "";
             }
-
             @Override
             public Customer fromString(String string) {
-                return null;
+                return null; // Not needed
             }
         });
 
         Button addCustomerButton = new Button("+");
         HBox customerBox = new HBox(5, customerComboBox, addCustomerButton);
 
-        // Product ComboBox
+        // Product selection
         Label productLabel = new Label("Select Product:");
-        List<Product> products = new ArrayList<>();
-        if (productService != null) {
-            products = productService.getAllProducts();
-        }
-        if (products == null) {
-            products = new ArrayList<>();  // Fallback to an empty list if products are null
-        }
-        ComboBox<Product> productComboBox = new ComboBox<>(FXCollections.observableArrayList(products));
+        ComboBox<Product> productComboBox = new ComboBox<>();
 
-        // Quantity TextField
+        // Lazy load products when dropdown is clicked
+        productComboBox.setOnMouseClicked(event -> {
+            if (productComboBox.getItems().isEmpty()) {
+                List<Product> products = fetchProducts();
+                if (products != null) {
+                    productComboBox.setItems(FXCollections.observableArrayList(products));
+                }
+            }
+        });
+
+        // Quantity input
         Label quantityLabel = new Label("Quantity:");
         TextField quantityField = new TextField();
 
-        // Order Summary TextArea
+        // Order summary
         TextArea orderSummary = new TextArea();
         orderSummary.setEditable(false);
 
+        // Temporary order item lists
         List<Product> selectedProducts = new ArrayList<>();
         List<Integer> selectedQuantities = new ArrayList<>();
 
-        // OrderController
+        // Controller setup
         OrderController orderController = new OrderController(
                 customerService,
                 orderService,
@@ -99,15 +102,14 @@ public class OrderManagementUI {
                 customerComboBox
         );
 
-        // Add Product Button
+        // Action buttons
         Button addProductButton = new Button("Add Product");
         addProductButton.setOnAction(e -> orderController.addProduct(productComboBox, quantityField));
 
-        // Submit Order Button
         Button submitOrderButton = new Button("Submit Order");
         submitOrderButton.setOnAction(orderController::submitOrder);
 
-        // Layout
+        // Add UI components to the grid
         grid.add(customerLabel, 0, 0);
         grid.add(customerBox, 1, 0);
         grid.add(productLabel, 0, 1);
@@ -116,17 +118,30 @@ public class OrderManagementUI {
         grid.add(quantityField, 1, 2);
         grid.add(addProductButton, 1, 3);
 
+        // Full layout
         VBox layout = new VBox(10);
         layout.setPadding(new Insets(20));
         layout.getChildren().addAll(grid, orderSummary, submitOrderButton);
 
-        // Scene and Stage
         Scene scene = new Scene(layout, 650, 400);
         orderStage.setScene(scene);
         orderStage.showAndWait();
     }
 
-    // Helper method to show alerts
+    private List<Product> fetchProducts() {
+        try {
+            List<Product> products = productService.getAllProducts();
+            if (products == null || products.isEmpty()) {
+                System.out.println("No products available.");
+                return new ArrayList<>();
+            }
+            return products;
+        } catch (Exception e) {
+            System.out.println("Error fetching products: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
