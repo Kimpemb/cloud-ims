@@ -1,11 +1,13 @@
 package com.joshuawilliams.ims.controller;
 
 import com.joshuawilliams.ims.model.Customer;
+import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.model.Order;
 import com.joshuawilliams.ims.model.Product;
 import com.joshuawilliams.ims.service.CustomerService;
 import com.joshuawilliams.ims.service.OrderService;
 import com.joshuawilliams.ims.service.ProductService;
+import com.joshuawilliams.ims.utils.SessionManager;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -48,8 +50,7 @@ public class OrderController {
         }
     }
 
-    public void submitOrder(ActionEvent event)
-    {
+    public boolean submitOrder(ActionEvent event) {
         Customer customer = customerComboBox.getValue();
         if (customer != null && !selectedProducts.isEmpty()) {
             double totalPrice = 0.0;
@@ -57,21 +58,32 @@ public class OrderController {
                 totalPrice += selectedProducts.get(i).getPrice() * selectedQuantities.get(i);
             }
 
-            String currentUserName = "Admin"; // Replace with actual logged-in user's name
-            int currentUserId = 1; // Replace with actual logged-in user's ID
+            Employee loggedInEmployee = SessionManager.getLoggedInEmployee();
+            String currentUserName = loggedInEmployee != null ? loggedInEmployee.getName() : "Unknown"; // Fetch name from session
+            int currentUserId = -1;
+
+            if (loggedInEmployee != null) {
+                try {
+                    currentUserId = Integer.parseInt(loggedInEmployee.getId()); // Assuming getId() returns a String that can be parsed to int
+                } catch (NumberFormatException e) {
+                    currentUserId = -1; // Handle case where ID can't be parsed
+                }
+            }
 
             Order order = new Order(0, customer, selectedProducts, selectedQuantities, totalPrice,
                     LocalDateTime.now(), currentUserName, currentUserId);
 
             if (orderService.createOrder(order)) {
-                orderSummary.appendText("Order submitted successfully!\n");
                 selectedProducts.clear();
                 selectedQuantities.clear();
+                return true;
             } else {
-                orderSummary.appendText("Failed to submit order.\n");
+                return false;
             }
         } else {
-            orderSummary.appendText("Please select a customer and add at least one product.\n");
+            return false;
         }
     }
+
+
 }

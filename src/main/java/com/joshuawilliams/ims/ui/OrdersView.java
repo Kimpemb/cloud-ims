@@ -14,6 +14,7 @@ import javafx.collections.ObservableList;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 
 import java.sql.Connection;
@@ -27,22 +28,22 @@ public class OrdersView extends BorderPane {
     private final OrderService orderService;
     private final CustomerService customerService;
     private final ProductService productService;
+    private final Stage primaryStage;  // Store the primary stage for the modal
 
     public OrdersView(CustomerService customerService, ProductService productService, OrderService orderService, Stage primaryStage) {
         this.customerService = customerService;
         this.orderService = orderService;
+        this.primaryStage = primaryStage;  // Initialize primaryStage
 
+        // Initialize ProductService with fallback if null
         if (productService == null) {
             logger.warning("ProductService is null! Creating a default ProductService instance.");
-
-            Connection connection = DatabaseConnection.getConnection(); // Use your DatabaseConnection class
-            ProductDao productDao = new ProductDao(connection);         // Pass connection to ProductDao
-            this.productService = new ProductService(productDao, connection); // Pass both to ProductService
+            Connection connection = DatabaseConnection.getConnection();
+            ProductDao productDao = new ProductDao(connection);
+            this.productService = new ProductService(productDao, connection);
         } else {
             this.productService = productService;
         }
-
-
 
         // Log the injected services for debugging
         logger.info("OrdersView - CustomerService: " + this.customerService);
@@ -64,6 +65,8 @@ public class OrdersView extends BorderPane {
     private void openOrderForm() {
         OrderManagementUI orderManagementUI = new OrderManagementUI(customerService, productService, orderService);
         Stage newStage = new Stage();
+        newStage.initModality(Modality.APPLICATION_MODAL); // Make the window modal
+        newStage.initOwner(primaryStage);  // Set the parent window to the main stage
         orderManagementUI.showOrderForm(newStage);
     }
 
@@ -71,6 +74,7 @@ public class OrdersView extends BorderPane {
         TableView<Order> orderTable = new TableView<>();
         orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
+        // Define table columns
         TableColumn<Order, Number> orderIdCol = new TableColumn<>("Order ID");
         orderIdCol.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getOrderId()));
 

@@ -1,4 +1,3 @@
-// File: OrderManagementUI.java
 package com.joshuawilliams.ims.ui;
 
 import com.joshuawilliams.ims.controller.OrderController;
@@ -31,16 +30,12 @@ public class OrderManagementUI {
         this.customerService = customerService;
         this.productService = productService;
         this.orderService = orderService;
-
-        if (this.productService == null) {
-            System.out.println("Error: ProductService is null in OrderManagementUI!");
-        }
     }
 
     public void showOrderForm(Stage ownerStage) {
         Stage orderStage = new Stage();
         orderStage.setTitle("Order Management");
-        orderStage.initModality(Modality.WINDOW_MODAL);
+        orderStage.initModality(Modality.APPLICATION_MODAL); // Block interaction with parent
         orderStage.initOwner(ownerStage);
 
         // Layout setup
@@ -49,7 +44,7 @@ public class OrderManagementUI {
         grid.setVgap(8);
         grid.setHgap(10);
 
-        // Customer selection
+        // Customer ComboBox
         Label customerLabel = new Label("Select Customer:");
         ComboBox<Customer> customerComboBox = new ComboBox<>(FXCollections.observableArrayList(customerService.getAllCustomers()));
         customerComboBox.setConverter(new StringConverter<>() {
@@ -57,20 +52,18 @@ public class OrderManagementUI {
             public String toString(Customer customer) {
                 return customer != null ? customer.getFirstName() + " " + customer.getLastName() : "";
             }
+
             @Override
             public Customer fromString(String string) {
-                return null; // Not needed
+                return null;
             }
         });
-
         Button addCustomerButton = new Button("+");
         HBox customerBox = new HBox(5, customerComboBox, addCustomerButton);
 
-        // Product selection
+        // Product ComboBox
         Label productLabel = new Label("Select Product:");
         ComboBox<Product> productComboBox = new ComboBox<>();
-
-        // Lazy load products when dropdown is clicked
         productComboBox.setOnMouseClicked(event -> {
             if (productComboBox.getItems().isEmpty()) {
                 List<Product> products = fetchProducts();
@@ -80,7 +73,7 @@ public class OrderManagementUI {
             }
         });
 
-        // Quantity input
+        // Quantity
         Label quantityLabel = new Label("Quantity:");
         TextField quantityField = new TextField();
 
@@ -88,11 +81,11 @@ public class OrderManagementUI {
         TextArea orderSummary = new TextArea();
         orderSummary.setEditable(false);
 
-        // Temporary order item lists
+        // Temporary lists
         List<Product> selectedProducts = new ArrayList<>();
         List<Integer> selectedQuantities = new ArrayList<>();
 
-        // Controller setup
+        // Controller
         OrderController orderController = new OrderController(
                 customerService,
                 orderService,
@@ -102,14 +95,22 @@ public class OrderManagementUI {
                 customerComboBox
         );
 
-        // Action buttons
+        // Buttons
         Button addProductButton = new Button("Add Product");
         addProductButton.setOnAction(e -> orderController.addProduct(productComboBox, quantityField));
 
         Button submitOrderButton = new Button("Submit Order");
-        submitOrderButton.setOnAction(orderController::submitOrder);
+        submitOrderButton.setOnAction(e -> {
+            boolean isSubmitted = orderController.submitOrder(e); // Call without event argument
+            if (isSubmitted) {
+                showAlert(Alert.AlertType.INFORMATION, "Success", "Order submitted successfully!");
+                orderStage.close(); // Close the modal after successful submission
+            } else {
+                showAlert(Alert.AlertType.ERROR, "Error", "Order submission failed. Please try again.");
+            }
+        });
 
-        // Add UI components to the grid
+        // Grid population
         grid.add(customerLabel, 0, 0);
         grid.add(customerBox, 1, 0);
         grid.add(productLabel, 0, 1);
@@ -119,13 +120,13 @@ public class OrderManagementUI {
         grid.add(addProductButton, 1, 3);
 
         // Full layout
-        VBox layout = new VBox(10);
+        VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
         layout.getChildren().addAll(grid, orderSummary, submitOrderButton);
 
-        Scene scene = new Scene(layout, 650, 400);
+        Scene scene = new Scene(layout, 650, 450);
         orderStage.setScene(scene);
-        orderStage.showAndWait();
+        orderStage.showAndWait(); // Ensure modal behavior
     }
 
     private List<Product> fetchProducts() {
@@ -142,8 +143,8 @@ public class OrderManagementUI {
         }
     }
 
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
+    private void showAlert(Alert.AlertType alertType, String title, String message) {
+        Alert alert = new Alert(alertType);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
