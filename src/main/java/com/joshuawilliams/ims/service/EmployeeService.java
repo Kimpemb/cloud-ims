@@ -1,183 +1,92 @@
+// File: src/main/java/com/joshuawilliams/ims/service/EmployeeService.java
 package com.joshuawilliams.ims.service;
 
 import com.joshuawilliams.ims.dao.EmployeeDao;
 import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.utils.EmailValidator;
 import com.joshuawilliams.ims.utils.PasswordUtils;
+import com.joshuawilliams.ims.utils.ServiceResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.security.auth.login.LoginException;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Date;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.sql.Connection;
-
-
-import static com.joshuawilliams.ims.dao.EmployeeDao.logger;
 
 public class EmployeeService {
+
     private final EmployeeDao employeeDao;
     private final Connection connection;
+    private static final Logger logger = LoggerFactory.getLogger(EmployeeService.class);
 
-    // Constructor to inject EmployeeDao and Connection
     public EmployeeService(EmployeeDao employeeDao, Connection connection) {
         this.employeeDao = employeeDao;
-        this.connection = connection;  // Initialize the connection
+        this.connection = connection;
     }
 
     public List<Employee> getAllEmployees() {
         return employeeDao.getAllEmployees();
     }
 
-
-
-    public boolean addEmployee(Employee employee) {
+    public ServiceResult<Void> addEmployee(Employee employee) {
         try {
-            // Validate email
-            if (!EmailValidator.isValidEmail(employee.getEmail())) {
-                throw new IllegalArgumentException("Invalid email address.");
+            if (!validateEmployee(employee, true)) {
+                return new ServiceResult<>(false, "Invalid employee data.", null);
             }
 
-            // Validate Date of Birth
-            if (!isValidDateOfBirth(employee.getDateOfBirth())) {
-                throw new IllegalArgumentException("Employee must be at least 18 years old.");
-            }
-
-            // Validate Hire Date
-            if (!isValidHireDate(employee.getHireDate())) {
-                throw new IllegalArgumentException("Hire date cannot be in the future.");
-            }
-
-            // Validate Password
-            if (!isValidPassword(employee.getPassword())) {
-                throw new IllegalArgumentException("Password must be at least 8 characters, including a number and a special character.");
-            }
-
-            // Hash Password before saving
-            String hashedPassword = PasswordUtils.hashPassword(employee.getPassword());
-            employee.setPassword(hashedPassword);
-
-            // Add the employee to the database
-            employeeDao.addEmployee(employee);
-            logger.info("Employee added successfully with ID: {}", employee.getId());
-            return true;
-
-        } catch (IllegalArgumentException e) {
-            logger.error("Validation error adding employee: {}", e.getMessage());
-            return false;
-
+            employee.setPassword(PasswordUtils.hashPassword(employee.getPassword()));
+            insertEmployee(employee);
+            logger.info("Employee added: {}", employee.getEmail());
+            return new ServiceResult<>(true, "Employee added successfully.", null);
         } catch (Exception e) {
-            logger.error("Unexpected error adding employee: {}", e.getMessage(), e);
-            return false;
+            logger.error("Failed to add employee: {}", e.getMessage(), e);
+            return new ServiceResult<>(false, "Error while adding employee.", null);
         }
     }
 
-    // EmployeeService.java
-    public int getTotalEmployees() {
-        return employeeDao.getTotalEmployees();
-    }
-
-
-
-    public boolean isValidPassword(String password) {
-        if (password == null || password.isEmpty()) {
-            return false;
-        }
-
-        // If the password is already hashed, skip pattern validation
-        if (PasswordUtils.isHashed(password)) {
-            return true;
-        }
-
-        // Pattern validation for plain-text passwords
-        String passwordPattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
-        return password.matches(passwordPattern);
-    }
-
-    // In EmployeeService.java
-    public boolean isDefaultAdminPassword(String email) throws SQLException {
-        return email.equalsIgnoreCase("admin@system.com") &&
-                employeeDao.isDefaultAdminPassword(email);
-    }
-
-    public boolean updatePasswordByEmail(String email, String hashedPassword) throws SQLException {
-        return employeeDao.updatePasswordByEmail(email, hashedPassword);
-    }
-
-
-    public boolean updateEmployee(Employee employee) {
+    public ServiceResult<Void> updateEmployee(Employee employee) {
         try {
-            // Validate email
-            if (!EmailValidator.isValidEmail(employee.getEmail())) {
-                throw new IllegalArgumentException("Invalid email address.");
+            if (!validateEmployee(employee, false)) {
+                return new ServiceResult<>(false, "Invalid employee data.", null);
             }
 
-            // Validate Date of Birth
-            if (!isValidDateOfBirth(employee.getDateOfBirth())) {
-                throw new IllegalArgumentException("Employee must be at least 18 years old.");
-            }
-
-            // Validate Hire Date
-            if (!isValidHireDate(employee.getHireDate())) {
-                throw new IllegalArgumentException("Hire date cannot be in the future.");
-            }
-
-            // Password validation and hashing
-            if (employee.getPassword() != null) {
-                if (!employee.getPassword().isEmpty()) {
-                    logger.debug("Validating password for employee ID: {}", employee.getId());
-                    if (!isValidPassword(employee.getPassword())) {
-                        logger.debug("Password validation failed for: {}", employee.getPassword());
-                        throw new IllegalArgumentException("Password must be at least 8 characters, including a number and a special character.");
-                    }
-                    logger.debug("Password validation passed.");
-
-                    // Hash the password before updating
-                    String hashedPassword = PasswordUtils.hashPassword(employee.getPassword());
-                    employee.setPassword(hashedPassword);
-                } else {
-                    // Retain existing password if the provided one is empty
-                    logger.debug("No new password provided. Retaining existing password for employee ID: {}", employee.getId());
-                    employeeDao.getEmployeeById(employee.getId())
-                            .ifPresent(existingEmployee -> employee.setPassword(existingEmployee.getPassword()));
+            if (employee.getPassword() != null && !employee.getPassword().isEmpty()) {
+                if (!PasswordUtils.isHashed(employee.getPassword())) {
+                    employee.setPassword(PasswordUtils.hashPassword(employee.getPassword()));
                 }
+            } else {
+                employeeDao.getEmployeeById(employee.getId())
+                        .ifPresent(existing -> employee.setPassword(existing.getPassword()));
             }
 
-            // Proceed with employee update
             employeeDao.updateEmployee(employee);
-            logger.info("Employee updated successfully with ID: {}", employee.getId());
-            return true;
-
-        } catch (IllegalArgumentException e) {
-            logger.error("Validation error updating employee: {}", e.getMessage());
-            return false;
-
+            logger.info("Employee updated: {}", employee.getId());
+            return new ServiceResult<>(true, "Employee updated successfully.", null);
         } catch (Exception e) {
-            logger.error("Unexpected error updating employee: {}", e.getMessage(), e);
-            return false;
+            logger.error("Failed to update employee: {}", e.getMessage(), e);
+            return new ServiceResult<>(false, "Error while updating employee.", null);
         }
     }
 
-
-
-    public boolean deleteEmployee(String employeeId) {
+    public ServiceResult<Void> deleteEmployee(String employeeId) {
         try {
-            // Business logic before deleting an employee, if any
             employeeDao.deleteEmployee(employeeId);
-            return true; // Employee deleted successfully
+            logger.info("Employee deleted: {}", employeeId);
+            return new ServiceResult<>(true, "Employee deleted successfully.", null);
         } catch (Exception e) {
-            logger.error("Error deleting employee: {}", e.getMessage(), e); // Log the error
-            return false;
+            logger.error("Failed to delete employee: {}", e.getMessage(), e);
+            return new ServiceResult<>(false, "Error while deleting employee.", null);
         }
     }
 
     public Optional<Employee> login(String email, String password) throws LoginException {
         try {
             Optional<Employee> optionalEmployee = employeeDao.getEmployeeByEmail(email);
-
             if (optionalEmployee.isEmpty()) {
                 throw new LoginException("No employee found with email: " + email);
             }
@@ -188,88 +97,117 @@ public class EmployeeService {
             }
 
             return Optional.of(employee);
-
         } catch (Exception e) {
-            // Wrap other exceptions in a LoginException with a clear message
-            throw new LoginException("An error occurred during login. Please try again.");
+            logger.error("Login error: {}", e.getMessage(), e);
+            throw new LoginException("Error during login. Please try again.");
         }
     }
 
+    public boolean isDefaultAdminPassword(String email) throws SQLException {
+        if (!"admin@system.com".equalsIgnoreCase(email)) {
+            return false;
+        }
+        return employeeDao.isDefaultAdminPassword(email);
+    }
 
+    public boolean updatePasswordByEmail(String email, String newPassword) throws SQLException {
+        String hashedPassword = PasswordUtils.isHashed(newPassword) ? newPassword : PasswordUtils.hashPassword(newPassword);
+        return employeeDao.updatePasswordByEmail(email, hashedPassword);
+    }
 
-
-
-
-
-
-
-
-
-    public boolean addDepartment(String name, String code, String description, String managerName, String email, String location, String status) {
+    public ServiceResult<Void> addDepartment(String name, String code, String description,
+                                             String managerName, String email, String location, String status) {
         try {
-            // Logic to add the department (call the EmployeeDao method)
             employeeDao.addDepartment(name, code, description, managerName, email, location, status);
-            return true; // Department added successfully
+            logger.info("Department added: {}", name);
+            return new ServiceResult<>(true, "Department added successfully.", null);
         } catch (Exception e) {
-            logger.error("Error adding department: {}", e.getMessage(), e); // Log the error
-            return false;
+            logger.error("Failed to add department: {}", e.getMessage(), e);
+            return new ServiceResult<>(false, "Error while adding department.", null);
         }
     }
 
-
-    public boolean addRole(String roleName) {
+    public ServiceResult<Void> addRole(String roleName) {
         try {
-            // Logic to add the role (e.g., update the database or local list)
             employeeDao.addRole(roleName);
-            return true; // Role added successfully
+            logger.info("Role added: {}", roleName);
+            return new ServiceResult<>(true, "Role added successfully.", null);
         } catch (Exception e) {
-            logger.error("Error adding role: {}", e.getMessage(), e); // Log the error
+            logger.error("Failed to add role: {}", e.getMessage(), e);
+            return new ServiceResult<>(false, "Error while adding role.", null);
+        }
+    }
+
+    public int getTotalEmployees() {
+        return employeeDao.getTotalEmployees();
+    }
+
+    private boolean validateEmployee(Employee employee, boolean checkPassword) {
+        if (!EmailValidator.isValidEmail(employee.getEmail())) {
             return false;
         }
-    }
-
-
-    // Inside EmployeeDao or a utility class
-    private Employee mapResultSetToEmployee(ResultSet rs) throws SQLException {
-        Employee employee = new Employee();
-        employee.setId(rs.getString("id"));
-        employee.setName(rs.getString("name"));
-        employee.setDepartment(rs.getString("department_id"));
-        employee.setRole(rs.getString("role_id"));
-        employee.setEmail(rs.getString("email"));
-        employee.setSalary(rs.getDouble("salary"));
-        employee.setDateOfBirth(rs.getDate("date_of_birth"));
-        employee.setHireDate(rs.getDate("hire_date"));
-        employee.setAddress(rs.getString("address"));
-        employee.setManagerId(rs.getString("manager_id"));
-        employee.setPhoneNumber(rs.getString("phone_number"));
-        employee.setPerformanceReview(rs.getString("performance_review"));
-        employee.setEmergencyContact(rs.getString("emergency_contact"));
-        employee.setNationalId(rs.getString("national_id"));
-        employee.setStatus(rs.getString("status"));
-        employee.setEmploymentType(rs.getString("employment_type"));
-        return employee;
-    }
-
-
-    public boolean isValidHireDate(Date hireDate) {
-        if (hireDate == null) {
-            return false; // Hire date is required
+        if (!isValidDateOfBirth(employee.getDateOfBirth())) {
+            return false;
         }
-
-        Date currentDate = new Date();
-        return !hireDate.after(currentDate); // Hire date should not be after the current date
+        if (!isValidHireDate(employee.getHireDate())) {
+            return false;
+        }
+        if (checkPassword && (employee.getPassword() == null || !isValidPassword(employee.getPassword()))) {
+            return false;
+        }
+        return true;
     }
 
-    public boolean isValidDateOfBirth(Date dateOfBirth) {
-        if (dateOfBirth == null) {
-            return false; // Date of birth is required
+    public boolean isValidPassword(String password) {
+        if (PasswordUtils.isHashed(password)) {
+            return true;
         }
+        String pattern = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,}$";
+        return password.matches(pattern);
+    }
 
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.YEAR, -18); // Subtract 18 years from the current date
-        Date thresholdDate = calendar.getTime();
+    public boolean isValidHireDate(java.util.Date hireDate) {
+        if (hireDate == null) return false;
+        return !hireDate.after(new java.util.Date());
+    }
 
-        return dateOfBirth.before(thresholdDate); // Date of birth should be before the threshold date
+    public boolean isValidDateOfBirth(java.util.Date dob) {
+        if (dob == null) return false;
+        Calendar cal = Calendar.getInstance();
+        cal.add(Calendar.YEAR, -18);
+        return dob.before(cal.getTime());
+    }
+
+    // ============================ INSERT EMPLOYEE METHOD ============================
+
+    public void insertEmployee(Employee employee) {
+        String sql = "INSERT INTO employees (name, department_id, role_id, email, salary, date_of_birth, hire_date, " +
+                "address, manager_id, phone_number, performance_review, emergency_contact, national_id, status, " +
+                "employment_type, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, employee.getName());
+            stmt.setString(2, employee.getDepartment());
+            stmt.setString(3, employee.getRole());
+            stmt.setString(4, employee.getEmail());
+            stmt.setDouble(5, employee.getSalary());
+            stmt.setDate(6, employee.getDateOfBirth() != null ? new Date(employee.getDateOfBirth().getTime()) : null);
+            stmt.setDate(7, employee.getHireDate() != null ? new Date(employee.getHireDate().getTime()) : null);
+            stmt.setString(8, employee.getAddress());
+            stmt.setString(9, employee.getManagerId());
+            stmt.setString(10, employee.getPhoneNumber());
+            stmt.setString(11, employee.getPerformanceReview());
+            stmt.setString(12, employee.getEmergencyContact());
+            stmt.setString(13, employee.getNationalId());
+            stmt.setString(14, employee.getStatus());
+            stmt.setString(15, employee.getEmploymentType());
+            stmt.setString(16, employee.getPassword());
+
+            stmt.executeUpdate();
+            logger.info("Employee inserted successfully: {}", employee.getEmail());
+        } catch (SQLException e) {
+            logger.error("Error inserting employee: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to insert employee.", e);
+        }
     }
 }

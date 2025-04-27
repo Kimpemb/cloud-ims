@@ -17,73 +17,95 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public class OrderController {
+
     private final OrderService orderService;
     private final CustomerService customerService;
+    private final ProductService productService;
 
     private final TextArea orderSummary;
     private final List<Product> selectedProducts;
     private final List<Integer> selectedQuantities;
     private final ComboBox<Customer> customerComboBox;
 
-    public OrderController(CustomerService customerService, OrderService orderService, TextArea orderSummary,
-                           List<Product> selectedProducts, List<Integer> selectedQuantities,
+    public OrderController(CustomerService customerService, OrderService orderService, ProductService productService,
+                           TextArea orderSummary, List<Product> selectedProducts, List<Integer> selectedQuantities,
                            ComboBox<Customer> customerComboBox) {
         this.customerService = customerService;
         this.orderService = orderService;
+        this.productService = productService;
         this.orderSummary = orderSummary;
         this.selectedProducts = selectedProducts;
         this.selectedQuantities = selectedQuantities;
         this.customerComboBox = customerComboBox;
     }
 
+    // Method to add product to the order
     public void addProduct(ComboBox<Product> productComboBox, TextField quantityField) {
         try {
             Product selectedProduct = productComboBox.getValue();
             int quantity = Integer.parseInt(quantityField.getText());
+
             if (selectedProduct != null && quantity > 0) {
                 selectedProducts.add(selectedProduct);
                 selectedQuantities.add(quantity);
                 orderSummary.appendText(selectedProduct.getName() + " x " + quantity + "\n");
+            } else {
+                orderSummary.appendText("Please select a valid product and quantity.\n");
             }
         } catch (NumberFormatException e) {
             orderSummary.appendText("Invalid quantity input. Please enter a valid number.\n");
         }
     }
 
-    public boolean submitOrder(ActionEvent event) {
+    // Method to submit the order
+    public boolean submitOrder(ActionEvent event, String processedBy, int processedById) {
         Customer customer = customerComboBox.getValue();
         if (customer != null && !selectedProducts.isEmpty()) {
-            double totalPrice = 0.0;
-            for (int i = 0; i < selectedProducts.size(); i++) {
-                totalPrice += selectedProducts.get(i).getPrice() * selectedQuantities.get(i);
-            }
+            double totalPrice = calculateTotalPrice();
 
             Employee loggedInEmployee = SessionManager.getLoggedInEmployee();
-            String currentUserName = loggedInEmployee != null ? loggedInEmployee.getName() : "Unknown"; // Fetch name from session
-            int currentUserId = -1;
-
-            if (loggedInEmployee != null) {
-                try {
-                    currentUserId = Integer.parseInt(loggedInEmployee.getId()); // Assuming getId() returns a String that can be parsed to int
-                } catch (NumberFormatException e) {
-                    currentUserId = -1; // Handle case where ID can't be parsed
-                }
-            }
+            String currentUserName = loggedInEmployee != null ? loggedInEmployee.getName() : "Unknown";
+            int currentUserId = (loggedInEmployee != null) ? getEmployeeId(loggedInEmployee) : -1;
 
             Order order = new Order(0, customer, selectedProducts, selectedQuantities, totalPrice,
                     LocalDateTime.now(), currentUserName, currentUserId);
 
-            if (orderService.createOrder(order)) {
-                selectedProducts.clear();
-                selectedQuantities.clear();
+            boolean orderCreated = orderService.createOrder(order);
+
+            if (orderCreated) {
+                resetOrder();
                 return true;
             } else {
                 return false;
             }
         } else {
+            orderSummary.appendText("Please select a customer and add products to the order.\n");
             return false;
         }
     }
 
+    // Helper method to calculate the total price of the order
+    private double calculateTotalPrice() {
+        double totalPrice = 0.0;
+        for (int i = 0; i < selectedProducts.size(); i++) {
+            totalPrice += selectedProducts.get(i).getPrice() * selectedQuantities.get(i);
+        }
+        return totalPrice;
+    }
 
+    // Helper method to get the employee ID
+    private int getEmployeeId(Employee loggedInEmployee) {
+        try {
+            return Integer.parseInt(loggedInEmployee.getId());
+        } catch (NumberFormatException e) {
+            return -1;  // Handle case where ID can't be parsed
+        }
+    }
+
+    // Helper method to reset the order
+    private void resetOrder() {
+        selectedProducts.clear();
+        selectedQuantities.clear();
+        orderSummary.clear();
+    }
 }

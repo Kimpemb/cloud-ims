@@ -3,8 +3,7 @@ package com.joshuawilliams.ims.controller;
 import com.joshuawilliams.ims.dao.EmployeeDao;
 import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.service.EmployeeService;
-import com.joshuawilliams.ims.utils.SessionManager;
-import com.joshuawilliams.ims.exception.LoginException;
+import com.joshuawilliams.ims.utils.LoginManager;
 
 import java.sql.Connection;
 import java.util.Optional;
@@ -35,7 +34,7 @@ public class LoginController {
 
             if (employee.isPresent()) {
                 System.out.println("Login successful: " + employee.get().getName());
-                SessionManager.setLoggedInEmployee(employee.get());
+                LoginManager.setLoggedInEmployee(employee.get());  // Use LoginManager to manage login session
                 // Proceed with the next action (e.g., navigate to the dashboard)
             } else {
                 System.out.println("Invalid email or password.");

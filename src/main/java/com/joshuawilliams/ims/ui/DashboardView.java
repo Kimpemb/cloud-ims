@@ -4,6 +4,7 @@ import com.joshuawilliams.ims.controller.DashboardController;
 import com.joshuawilliams.ims.service.CustomerService;
 import com.joshuawilliams.ims.service.OrderService;
 import com.joshuawilliams.ims.service.ProductService;
+import com.joshuawilliams.ims.utils.SessionManager;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -32,7 +33,8 @@ public class DashboardView {
             OrderService orderService,
             EmployeeManagementView employeeManagementView,
             CustomerView customerView,
-            SupplierView supplierView
+            SupplierView supplierView,
+            SessionManager sessionManager // Added SessionManager as a parameter
     ) {
         this.dashboardController = dashboardController;
         this.connection = connection;
@@ -42,7 +44,8 @@ public class DashboardView {
         this.employeeManagementView = employeeManagementView;
         this.customerView = customerView;
         this.supplierView = supplierView;
-        this.orderManagementUI = new OrderManagementUI(customerService, productService, orderService);
+        // Pass SessionManager to the OrderManagementUI constructor
+        this.orderManagementUI = new OrderManagementUI(customerService, productService, orderService, sessionManager);
     }
 
     public Pane getView() {

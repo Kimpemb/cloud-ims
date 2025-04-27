@@ -6,6 +6,7 @@ import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.service.*;
 import com.joshuawilliams.ims.controller.DashboardController;
 
+import com.joshuawilliams.ims.utils.SessionManager;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -309,11 +310,15 @@ public class MainApp extends Application {
                 recentActivitiesBox, chartPlaceholder, quickActionsBox
         );
 
-        // Create DashboardView with the required dependencies
+        // Assuming sessionManager is instantiated somewhere earlier in your code
+        SessionManager sessionManager = new SessionManager(); // or use the existing session manager instance
+
+// Create DashboardView with the required dependencies
         DashboardView dashboardView = new DashboardView(
                 dashboardController, connection, productService, customerService,
-                orderService, employeeManagementView, customerView, supplierView // Added supplierView
+                orderService, employeeManagementView, customerView, supplierView, sessionManager // Added sessionManager
         );
+
 
         // Initialize dashboard data
         dashboardController.initializeDashboard();

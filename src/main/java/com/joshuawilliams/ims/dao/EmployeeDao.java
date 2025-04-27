@@ -1,10 +1,10 @@
+// EmployeeDao.java
 package com.joshuawilliams.ims.dao;
 
 import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.model.Employee;
 import com.joshuawilliams.ims.utils.PasswordUtils;
 import com.joshuawilliams.ims.utils.UIHelper;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.control.Alert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,53 +14,74 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static com.joshuawilliams.ims.utils.PasswordUtils.hashPassword;
-
 public class EmployeeDao {
-    // Use SLF4J LoggerFactory for logging
-    public static final Logger logger = LoggerFactory.getLogger(EmployeeDao.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(EmployeeDao.class);
     private final Connection connection;
 
     public EmployeeDao(Connection connection) {
         this.connection = connection;
     }
 
-    // Retrieve all employees
     public List<Employee> getAllEmployees() {
         List<Employee> employees = new ArrayList<>();
-        String query = "SELECT * FROM employees";
+        String sql = "SELECT * FROM employees";
 
         try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(query)) {
+             ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                employees.add(mapResultSetToEmployee(rs));
+                employees.add(mapEmployee(rs));
             }
-
         } catch (SQLException e) {
-            logger.error("Error fetching employees from database: ", e); // Log the exception with error level
+            logger.error("Failed to retrieve employees.", e);
         }
-
         return employees;
     }
 
-    public Optional<Employee> getEmployeeById(String employeeId) {
-        String query = "SELECT * FROM employees WHERE id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            stmt.setString(1, employeeId);
+    public Optional<Employee> getEmployeeById(String id) {
+        String sql = "SELECT * FROM employees WHERE id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return Optional.of(mapResultSetToEmployee(rs));
+                    return Optional.of(mapEmployee(rs));
                 }
             }
         } catch (SQLException e) {
-            logger.error("Error fetching employee by ID: {}", employeeId, e);
+            logger.error("Failed to retrieve employee with ID: {}", id, e);
         }
-        return Optional.empty(); // Return empty if no employee found
+        return Optional.empty();
     }
 
-    // Helper method to map ResultSet to Employee object
-    private Employee mapResultSetToEmployee(ResultSet rs) throws SQLException {
+    public boolean insertEmployee(Employee employee) {
+        String sql = """
+                INSERT INTO employees (name, department_id, role_id, email, salary, date_of_birth, hire_date,
+                address, manager_id, phone_number, performance_review, emergency_contact, national_id, status,
+                employment_type, password)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            populateInsertStatement(stmt, employee);
+            int rows = stmt.executeUpdate();
+            logger.info("Inserted employee [{}], Rows affected: {}", employee.getName(), rows);
+            return rows > 0;
+        } catch (SQLException e) {
+            logger.error("Failed to insert employee [{}]: {}", employee.getName(), e.getMessage(), e);
+            return false;
+        }
+    }
+
+    @Deprecated
+    public void addEmployee(Employee employee) {
+        if (!insertEmployee(employee)) {
+            throw new RuntimeException("Could not add employee.");
+        }
+    }
+
+    private Employee mapEmployee(ResultSet rs) throws SQLException {
         return new Employee(
                 rs.getString("id"),
                 rs.getString("name"),
@@ -78,71 +99,33 @@ public class EmployeeDao {
                 rs.getString("employment_type"),
                 rs.getString("emergency_contact"),
                 rs.getString("national_id"),
-                rs.getString("password") // Added password field
+                rs.getString("password")
         );
     }
 
-
-
-
-
-
-    // Add a new employee
-    // Add a new employee
-    public void addEmployee(Employee employee) {
-        String query = "INSERT INTO employees (name, department_id, role_id, email, salary, date_of_birth, hire_date, " +
-                "address, manager_id, phone_number, performance_review, emergency_contact, national_id, status, " +
-                "employment_type, password) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        logger.info("Preparing to add a new employee with the following details: "
-                + "Name: " + employee.getName() + ", "
-                + "Department ID: " + employee.getDepartment() + ", "
-                + "Role ID: " + employee.getRole() + ", "
-                + "Email: " + employee.getEmail() + ", "
-                + "Salary: " + employee.getSalary() + ", "
-                + "Date of Birth: " + employee.getDateOfBirth() + ", "
-                + "Hire Date: " + employee.getHireDate() + ", "
-                + "Address: " + employee.getAddress() + ", "
-                + "Manager ID: " + employee.getManagerId() + ", "
-                + "Phone Number: " + employee.getPhoneNumber() + ", "
-                + "Performance Review: " + employee.getPerformanceReview() + ", "
-                + "Emergency Contact: " + employee.getEmergencyContact() + ", "
-                + "National ID: " + employee.getNationalId() + ", "
-                + "Status: " + employee.getStatus() + ", "
-                + "Employment Type: " + employee.getEmploymentType());
-
-        try (PreparedStatement stmt = connection.prepareStatement(query)) {
-            logger.info("Preparing statement with query: " + query);
-
-            stmt.setString(1, employee.getName());
-            stmt.setString(2, employee.getDepartment());
-            stmt.setString(3, employee.getRole());
-            stmt.setString(4, employee.getEmail());
-            stmt.setDouble(5, employee.getSalary());
-            stmt.setDate(6, employee.getDateOfBirth() != null ? new Date(employee.getDateOfBirth().getTime()) : null);
-            stmt.setDate(7, employee.getHireDate() != null ? new Date(employee.getHireDate().getTime()) : null);
-            stmt.setString(8, employee.getAddress());
-            stmt.setString(9, employee.getManagerId());
-            stmt.setString(10, employee.getPhoneNumber());
-            stmt.setString(11, employee.getPerformanceReview());
-            stmt.setString(12, employee.getEmergencyContact());
-            stmt.setString(13, employee.getNationalId());
-            stmt.setString(14, employee.getStatus());
-            stmt.setString(15, employee.getEmploymentType());
-            stmt.setString(16, employee.getPassword()); // Added password field
-
-            logger.info("Executing query...");
-            stmt.executeUpdate();
-            logger.info("Query executed successfully. Employee added.");
-        } catch (SQLException e) {
-            logger.error("Error occurred while adding a new employee: {}", e.getMessage(), e);
-            throw new RuntimeException("Error adding employee: " + e.getMessage(), e);
-        }
+    private void populateInsertStatement(PreparedStatement stmt, Employee emp) throws SQLException {
+        stmt.setString(1, emp.getName());
+        stmt.setString(2, emp.getDepartment());
+        stmt.setString(3, emp.getRole());
+        stmt.setString(4, emp.getEmail());
+        stmt.setDouble(5, emp.getSalary());
+        stmt.setDate(6, emp.getDateOfBirth() != null ? new Date(emp.getDateOfBirth().getTime()) : null);
+        stmt.setDate(7, emp.getHireDate() != null ? new Date(emp.getHireDate().getTime()) : null);
+        stmt.setString(8, emp.getAddress());
+        stmt.setString(9, emp.getManagerId());
+        stmt.setString(10, emp.getPhoneNumber());
+        stmt.setString(11, emp.getPerformanceReview());
+        stmt.setString(12, emp.getEmergencyContact());
+        stmt.setString(13, emp.getNationalId());
+        stmt.setString(14, emp.getStatus());
+        stmt.setString(15, emp.getEmploymentType());
+        stmt.setString(16, emp.getPassword());
     }
 
 
-    public void updateEmployee(Employee employee) {
+
+
+public void updateEmployee(Employee employee) {
         String query = "UPDATE employees SET name = ?, department_id = ?, role_id = ?, email = ?, salary = ?, date_of_birth = ?, " +
                 "hire_date = ?, address = ?, manager_id = ?, phone_number = ?, performance_review = ?, emergency_contact = ?, " +
                 "national_id = ?, status = ?, employment_type = ?";
@@ -353,9 +336,4 @@ public class EmployeeDao {
             return resultSet.next();
         }
     }
-
-
-
-
-
 }

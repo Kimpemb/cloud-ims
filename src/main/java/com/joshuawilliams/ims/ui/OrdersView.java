@@ -6,6 +6,7 @@ import com.joshuawilliams.ims.model.Order;
 import com.joshuawilliams.ims.service.CustomerService;
 import com.joshuawilliams.ims.service.OrderService;
 import com.joshuawilliams.ims.service.ProductService;
+import com.joshuawilliams.ims.utils.SessionManager;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -25,96 +26,97 @@ import java.util.logging.Logger;
 public class OrdersView extends BorderPane {
 
     private static final Logger logger = Logger.getLogger(OrdersView.class.getName());
-    private final OrderService orderService;
+
     private final CustomerService customerService;
     private final ProductService productService;
-    private final Stage primaryStage;  // Store the primary stage for the modal
+    private final OrderService orderService;
+    private final Stage primaryStage;
+    private final TableView<Order> orderTable;
 
     public OrdersView(CustomerService customerService, ProductService productService, OrderService orderService, Stage primaryStage) {
         this.customerService = customerService;
+        this.productService = (productService != null) ? productService : createDefaultProductService();
         this.orderService = orderService;
-        this.primaryStage = primaryStage;  // Initialize primaryStage
+        this.primaryStage = primaryStage;
 
-        // Initialize ProductService with fallback if null
-        if (productService == null) {
-            logger.warning("ProductService is null! Creating a default ProductService instance.");
-            Connection connection = DatabaseConnection.getConnection();
-            ProductDao productDao = new ProductDao(connection);
-            this.productService = new ProductService(productDao, connection);
-        } else {
-            this.productService = productService;
-        }
+        logInjectedServices();
 
-        // Log the injected services for debugging
-        logger.info("OrdersView - CustomerService: " + this.customerService);
-        logger.info("OrdersView - ProductService: " + this.productService);
-        logger.info("OrdersView - OrderService: " + this.orderService);
+        orderTable = createOrderTable();
+        setupUI();
+        loadOrders();
+    }
 
-        // UI Setup
-        Button openOrderDialogButton = new Button("Create Order");
-        openOrderDialogButton.setOnAction(e -> openOrderForm());
+    private ProductService createDefaultProductService() {
+        logger.warning("ProductService is null! Creating a default ProductService instance.");
+        Connection connection = DatabaseConnection.getConnection();
+        return new ProductService(new ProductDao(connection), connection);
+    }
 
-        TableView<Order> orderTable = createOrderTable();
-        loadOrders(orderTable);
+    private void logInjectedServices() {
+        logger.info("OrdersView - CustomerService: " + customerService);
+        logger.info("OrdersView - ProductService: " + productService);
+        logger.info("OrdersView - OrderService: " + orderService);
+    }
 
-        HBox topBar = new HBox(10, openOrderDialogButton);
+    private void setupUI() {
+        Button createOrderButton = new Button("Create Order");
+        createOrderButton.setOnAction(event -> openOrderForm());
+
+        HBox topBar = new HBox(10, createOrderButton);
         this.setTop(topBar);
         this.setCenter(orderTable);
     }
 
     private void openOrderForm() {
-        OrderManagementUI orderManagementUI = new OrderManagementUI(customerService, productService, orderService);
-        Stage newStage = new Stage();
-        newStage.initModality(Modality.APPLICATION_MODAL); // Make the window modal
-        newStage.initOwner(primaryStage);  // Set the parent window to the main stage
-        orderManagementUI.showOrderForm(newStage);
+        // Open the order management UI with the logged-in employee info
+        OrderManagementUI orderManagementUI = new OrderManagementUI(customerService, productService, orderService, new SessionManager());
+        Stage dialogStage = new Stage();
+        dialogStage.initModality(Modality.APPLICATION_MODAL);
+        dialogStage.initOwner(primaryStage);
+        orderManagementUI.showOrderForm(dialogStage);
     }
 
     private TableView<Order> createOrderTable() {
-        TableView<Order> orderTable = new TableView<>();
-        orderTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        TableView<Order> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        // Define table columns
         TableColumn<Order, Number> orderIdCol = new TableColumn<>("Order ID");
-        orderIdCol.setCellValueFactory(cellData -> new SimpleIntegerProperty(cellData.getValue().getOrderId()));
+        orderIdCol.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().getOrderId()));
 
         TableColumn<Order, String> customerCol = new TableColumn<>("Customer");
-        customerCol.setCellValueFactory(cellData -> new SimpleStringProperty(
-                cellData.getValue().getCustomer().getFirstName() + " " +
-                        cellData.getValue().getCustomer().getLastName()
+        customerCol.setCellValueFactory(data -> new SimpleStringProperty(
+                data.getValue().getCustomer().getFirstName() + " " + data.getValue().getCustomer().getLastName()
         ));
 
         TableColumn<Order, Number> totalAmountCol = new TableColumn<>("Total Amount");
-        totalAmountCol.setCellValueFactory(cellData -> new SimpleDoubleProperty(cellData.getValue().getTotalAmount()));
+        totalAmountCol.setCellValueFactory(data -> new SimpleDoubleProperty(data.getValue().getTotalAmount()));
 
         TableColumn<Order, String> orderDateCol = new TableColumn<>("Order Date");
-        orderDateCol.setCellValueFactory(cellData -> new SimpleStringProperty(formatDate(cellData.getValue().getOrderDate())));
+        orderDateCol.setCellValueFactory(data -> new SimpleStringProperty(formatDate(data.getValue().getOrderDate())));
 
         TableColumn<Order, String> processedByCol = new TableColumn<>("Processed By");
-        processedByCol.setCellValueFactory(cellData -> new SimpleStringProperty(cellData.getValue().getProcessedBy()));
+        processedByCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().getProcessedBy()));
 
-        orderTable.getColumns().addAll(orderIdCol, customerCol, totalAmountCol, orderDateCol, processedByCol);
-        return orderTable;
+        table.getColumns().addAll(orderIdCol, customerCol, totalAmountCol, orderDateCol, processedByCol);
+
+        return table;
     }
 
-    private void loadOrders(TableView<Order> orderTable) {
+    private void loadOrders() {
         ObservableList<Order> orders = FXCollections.observableArrayList(orderService.getAllOrders());
         if (orders.isEmpty()) {
-            showNoOrdersMessage(orderTable);
+            showNoOrdersMessage();
         }
         orderTable.setItems(orders);
     }
 
-    private String formatDate(LocalDateTime date) {
-        if (date == null) {
-            return "N/A";
-        }
+    private String formatDate(LocalDateTime dateTime) {
+        if (dateTime == null) return "N/A";
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm");
-        return date.format(formatter);
+        return dateTime.format(formatter);
     }
 
-    private void showNoOrdersMessage(TableView<Order> orderTable) {
-        Label noOrdersLabel = new Label("No Orders Available");
-        orderTable.setPlaceholder(noOrdersLabel);
+    private void showNoOrdersMessage() {
+        orderTable.setPlaceholder(new Label("No Orders Available"));
     }
 }

@@ -6,6 +6,7 @@ import com.joshuawilliams.ims.model.Product;
 import com.joshuawilliams.ims.service.CustomerService;
 import com.joshuawilliams.ims.service.OrderService;
 import com.joshuawilliams.ims.service.ProductService;
+import com.joshuawilliams.ims.utils.SessionManager;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -25,11 +26,13 @@ public class OrderManagementUI {
     private final CustomerService customerService;
     private final ProductService productService;
     private final OrderService orderService;
+    private final SessionManager sessionManager; // To track the current user
 
-    public OrderManagementUI(CustomerService customerService, ProductService productService, OrderService orderService) {
+    public OrderManagementUI(CustomerService customerService, ProductService productService, OrderService orderService, SessionManager sessionManager) {
         this.customerService = customerService;
         this.productService = productService;
         this.orderService = orderService;
+        this.sessionManager = sessionManager; // Inject SessionManager
     }
 
     public void showOrderForm(Stage ownerStage) {
@@ -80,6 +83,11 @@ public class OrderManagementUI {
         // Order summary
         TextArea orderSummary = new TextArea();
         orderSummary.setEditable(false);
+        orderSummary.setMinHeight(100); // Ensure it's tall enough to be visible
+
+        // Wrap the orderSummary in a ScrollPane for scrolling if content is long
+        ScrollPane orderSummaryScroll = new ScrollPane(orderSummary);
+        orderSummaryScroll.setMinHeight(150); // Minimum height for visibility
 
         // Temporary lists
         List<Product> selectedProducts = new ArrayList<>();
@@ -89,6 +97,7 @@ public class OrderManagementUI {
         OrderController orderController = new OrderController(
                 customerService,
                 orderService,
+                productService,  // Add the missing ProductService here
                 orderSummary,
                 selectedProducts,
                 selectedQuantities,
@@ -101,7 +110,17 @@ public class OrderManagementUI {
 
         Button submitOrderButton = new Button("Submit Order");
         submitOrderButton.setOnAction(e -> {
-            boolean isSubmitted = orderController.submitOrder(e); // Call without event argument
+            // Get the current logged-in employee's name and ID from SessionManager
+            String processedBy = sessionManager.getCurrentUsernameOrDefault();
+
+            // If sessionManager.getLoggedInEmployee().getId() returns a String, convert it to int
+            String employeeIdString = sessionManager.getLoggedInEmployee() != null
+                    ? String.valueOf(sessionManager.getLoggedInEmployee().getId()) // Convert int to String
+                    : "-1";
+            int processedById = Integer.parseInt(employeeIdString); // Convert to int, or use -1 if invalid
+
+            // Assuming submitOrder expects the event, processedBy, and processedById
+            boolean isSubmitted = orderController.submitOrder(e, processedBy, processedById);
             if (isSubmitted) {
                 showAlert(Alert.AlertType.INFORMATION, "Success", "Order submitted successfully!");
                 orderStage.close(); // Close the modal after successful submission
@@ -109,6 +128,8 @@ public class OrderManagementUI {
                 showAlert(Alert.AlertType.ERROR, "Error", "Order submission failed. Please try again.");
             }
         });
+
+
 
         // Grid population
         grid.add(customerLabel, 0, 0);
@@ -122,7 +143,7 @@ public class OrderManagementUI {
         // Full layout
         VBox layout = new VBox(15);
         layout.setPadding(new Insets(20));
-        layout.getChildren().addAll(grid, orderSummary, submitOrderButton);
+        layout.getChildren().addAll(grid, orderSummaryScroll, submitOrderButton); // Fixed issue with addAll
 
         Scene scene = new Scene(layout, 650, 450);
         orderStage.setScene(scene);
