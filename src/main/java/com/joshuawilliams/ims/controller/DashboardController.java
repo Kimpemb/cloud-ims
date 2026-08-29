@@ -5,6 +5,8 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
+import java.sql.SQLException;
+
 public class DashboardController {
 
     // Services
@@ -68,8 +70,12 @@ public class DashboardController {
         totalEmployeesLabel.setText("Total Employees: " + employeeService.getTotalEmployees());
         totalCustomersLabel.setText("Total Customers: " + customerService.getTotalCustomers());
         totalOrdersLabel.setText("Total Orders: " + orderService.getTotalOrders());
-        totalSuppliersLabel.setText("Total Suppliers: " + supplierService.getTotalSuppliers());
-        totalSalesLabel.setText("Total Sales Today: $" + salesService.getTodaySales());
+        try {
+            totalSuppliersLabel.setText("Total Suppliers: " + supplierService.getSupplierCount());
+        } catch (SQLException e) {
+            totalSuppliersLabel.setText("Total Suppliers: N/A");
+            e.printStackTrace(); // Or show an alert to the user
+        }        totalSalesLabel.setText("Total Sales Today: $" + salesService.getTodaySales());
 
         System.out.println("Initializing dashboard...");
         loadRecentActivities();

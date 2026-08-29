@@ -1,120 +1,213 @@
 package com.joshuawilliams.ims.service;
 
 import com.joshuawilliams.ims.dao.SupplierDao;
-import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.model.Supplier;
+import com.joshuawilliams.ims.model.SupplierProductRelation;
+import com.joshuawilliams.ims.utils.SupplierExporter;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Connection;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
+import java.sql.SQLException;
+import java.util.*;
 
+/**
+ * Service class for managing suppliers, including CRUD operations,
+ * performance tracking, product relations, and data export.
+ */
 public class SupplierService {
-    private final SupplierDao supplierDao;
-    private final Connection connection;
+    private final SupplierDao supplierDAO;
+
+    private static final String EMAIL_PATTERN = "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$";
+    private static final String PHONE_PATTERN = "^[\\+]?[(]?[0-9]{3}[)]?[-\\s\\.]?[0-9]{3}[-\\s\\.]?[0-9]{4,6}$";
 
     public SupplierService(SupplierDao supplierDao, Connection connection) {
-        this.supplierDao = supplierDao;
-        this.connection = connection;
+        this.supplierDAO = new SupplierDao(connection);
     }
 
+    // ==================== CRUD ====================
 
-    public boolean addSupplier(Supplier supplier) {
+    public String addSupplier(Supplier supplier) throws SQLException {
         validateSupplier(supplier);
-        if (supplier.getSupplierId() == null || supplier.getSupplierId().isEmpty()) {
-            int supplierCount = getSupplierCount();
-            supplier.setSupplierId(generateSupplierId(supplierCount));
+
+        if (isBlank(supplier.getSupplierId())) {
+            supplier.setSupplierId(Supplier.generateSupplierId(getSupplierCount()));
         }
-        return supplierDao.addSupplier(supplier);
+
+
+        return supplierDAO.addSupplier(supplier) ? supplier.getSupplierId() : null;
     }
 
-    public List<Supplier> getAllSuppliers() {
-        return supplierDao.getAllSuppliers();
+    public boolean updateSupplier(Supplier supplier) throws SQLException {
+        validateString(supplier.getSupplierId(), "Supplier ID");
+        validateSupplier(supplier);
+        return supplierDAO.updateSupplier(supplier);
     }
 
-    public Supplier getSupplierById(String supplierId) {
+    public boolean deleteSupplier(String supplierId) throws SQLException {
         validateString(supplierId, "Supplier ID");
-        Supplier supplier = supplierDao.getSupplierById(supplierId);
-        if (supplier == null) {
-            throw new IllegalArgumentException("Supplier with ID " + supplierId + " not found.");
-        }
+        return supplierDAO.deleteSupplier(supplierId);
+    }
+
+    public boolean toggleSupplierStatus(String supplierId) throws SQLException {
+        Supplier supplier = getSupplierById(supplierId);
+        supplier.setStatus(supplier.getStatus().equalsIgnoreCase("Active") ? "Inactive" : "Active");
+        return updateSupplier(supplier);
+    }
+
+    // ==================== GETTERS ====================
+
+    public ObservableList<Supplier> getAllSuppliers() throws SQLException {
+        return FXCollections.observableArrayList(supplierDAO.getAllSuppliers());
+    }
+
+    public Supplier getSupplierById(String supplierId) throws SQLException {
+        validateString(supplierId, "Supplier ID");
+        Supplier supplier = supplierDAO.getSupplierById(supplierId);
+        if (supplier == null) throw new IllegalArgumentException("Supplier not found: " + supplierId);
         return supplier;
     }
 
-    public boolean updateSupplier(Supplier supplier) {
-        validateSupplier(supplier);
-        return supplierDao.updateSupplier(supplier);
+    public int getSupplierCount() throws SQLException {
+        return supplierDAO.getTotalSuppliers();
     }
 
-    public boolean deleteSupplier(String supplierId) {
+    public ObservableList<String> getAllCategories() throws SQLException {
+        Set<String> categories = new TreeSet<>();
+        for (Supplier s : getAllSuppliers()) {
+            if (!isBlank(s.getCategory())) categories.add(s.getCategory());
+        }
+        return FXCollections.observableArrayList(categories);
+    }
+
+    // ==================== SEARCH ====================
+
+    public ObservableList<Supplier> searchSuppliers(Map<String, Object> criteria) throws SQLException {
+        return FXCollections.observableArrayList(supplierDAO.searchSuppliers(criteria));
+    }
+
+    // ==================== RELATIONS ====================
+
+    public boolean saveSupplierProductRelation(SupplierProductRelation relation) throws SQLException {
+        validateSupplierProductRelation(relation);
+        return supplierDAO.saveSupplierProductRelation(relation);
+    }
+
+    public ObservableList<SupplierProductRelation> getSupplierProducts(String supplierId) throws SQLException {
         validateString(supplierId, "Supplier ID");
-        return supplierDao.deleteSupplier(supplierId);
+        return FXCollections.observableArrayList(supplierDAO.getSupplierProducts(supplierId));
     }
 
-    public void close() {
-        DatabaseConnection.closeConnection(connection);
+    public boolean deleteSupplierProductRelation(String supplierId, String productId) throws SQLException {
+        validateString(supplierId, "Supplier ID");
+        validateString(productId, "Product ID");
+        return supplierDAO.deleteSupplierProductRelation(supplierId, productId);
     }
 
-    public List<Supplier> searchSuppliersByName(String name) {
-        validateString(name, "Supplier name");
-        return supplierDao.getSuppliersByName(name);
+    // ==================== METRICS ====================
+
+    public Map<String, Object> calculateSupplierMetrics(String supplierId) throws SQLException {
+        Supplier supplier = getSupplierById(supplierId);
+        Map<String, Object> metrics = new LinkedHashMap<>();
+
+        metrics.put("Supplier ID", supplier.getSupplierId());
+        metrics.put("Supplier Name", supplier.getSupplierName());
+        metrics.put("Status", supplier.getStatus());
+        metrics.put("Reliability Rating", supplier.getReliabilityRating() + "/5");
+        metrics.put("Delivery Performance", supplier.getDeliveryPerformance() + "/5");
+        metrics.put("Overall Score", supplier.calculatePerformanceScore() + "/100");
+        metrics.put("Total Orders", supplier.getTotalOrdersPlaced());
+        metrics.put("Avg Response Time", String.format("%.1f days", supplier.getAverageResponseTime()));
+        metrics.put("Last Order Date", supplier.getLastOrderDate() != null ?
+                supplier.getLastOrderDate().toString() : "Never");
+
+        return metrics;
     }
 
-    public List<Supplier> searchSuppliersByEmail(String email) {
-        validateString(email, "Email");
-        return supplierDao.getSuppliersByEmail(email);
+    public boolean updateSupplierPerformance(String supplierId, int reliabilityRating, int deliveryPerformance)
+            throws SQLException {
+        validateRating(reliabilityRating);
+        validateRating(deliveryPerformance);
+
+        Supplier supplier = getSupplierById(supplierId);
+        supplier.setReliabilityRating(reliabilityRating);
+        supplier.setDeliveryPerformance(deliveryPerformance);
+
+        return updateSupplier(supplier);
     }
 
-    // SupplierService.java
-    public int getTotalSuppliers() {
-        return supplierDao.getTotalSuppliers();
+    public void recordSupplierOrder(String supplierId, Date orderDate, double responseTime) throws SQLException {
+        Supplier supplier = getSupplierById(supplierId);
+        supplier.updateMetricsAfterOrder(orderDate, responseTime);
+        updateSupplier(supplier);
     }
 
+    // ==================== EXPORT ====================
 
-    public List<Supplier> searchSuppliersByCategory(String category) {
-        validateString(category, "Category");
-        return supplierDao.getSuppliersByCategory(category);
+    public void exportAllSuppliers(File exportFile, String exportType) throws IOException, SQLException {
+        exportSuppliers(getAllSuppliers(), exportFile, exportType);
     }
 
-    public List<Supplier> searchSuppliersByReliabilityRating(int rating) {
-        validateRating(rating, "Reliability rating");
-        return supplierDao.getSuppliersByReliabilityRating(rating);
+    public void exportSupplierData(String supplierId, File exportFile, String exportType)
+            throws IOException, SQLException {
+        List<Supplier> single = Collections.singletonList(getSupplierById(supplierId));
+        exportSuppliers(single, exportFile, exportType);
     }
 
-    public List<Supplier> searchSuppliersByDeliveryPerformance(int performance) {
-        validateRating(performance, "Delivery performance");
-        return supplierDao.getSuppliersByDeliveryPerformance(performance);
+    private void exportSuppliers(List<Supplier> suppliers, File exportFile, String exportType) throws IOException {
+        String path = exportFile.getAbsolutePath();
+
+        switch (exportType.toLowerCase()) {
+            case "excel" -> SupplierExporter.exportToExcel(suppliers, path);
+            case "csv" -> SupplierExporter.exportToCSV(suppliers, path);
+            case "pdf" -> SupplierExporter.exportToPDF(suppliers, path);
+            default -> throw new IllegalArgumentException("Unsupported export type: " + exportType);
+        }
     }
 
-    public int getSupplierCount() {
-        return supplierDao.getAllSuppliers().size();
-    }
-
-    public String generateSupplierId(int supplierCount) {
-        String year = new SimpleDateFormat("yyyy").format(new Date());
-        String sequentialNumber = String.format("%03d", supplierCount + 1);
-        return "SUP-" + year + "-" + sequentialNumber;
-    }
+    // ==================== VALIDATION ====================
 
     private void validateSupplier(Supplier supplier) {
-        if (supplier == null) {
-            throw new IllegalArgumentException("Supplier cannot be null.");
-        }
-        validateString(supplier.getSupplierName(), "Supplier name");
-        if (supplier.getEmailAddress() != null && !supplier.getEmailAddress().contains("@")) {
+        if (supplier == null) throw new IllegalArgumentException("Supplier cannot be null.");
+        validateString(supplier.getSupplierName(), "Supplier Name");
+        validateEmail(supplier.getEmailAddress());
+        validatePhone(supplier.getPhoneNumber());
+    }
+
+    private void validateSupplierProductRelation(SupplierProductRelation relation) {
+        if (relation == null) throw new IllegalArgumentException("Relation cannot be null.");
+        validateString(relation.getSupplierId(), "Supplier ID");
+        validateString(relation.getProductId(), "Product ID");
+        if (relation.getUnitPrice() <= 0) throw new IllegalArgumentException("Unit price must be positive.");
+        if (relation.getMinOrderQuantity() <= 0) throw new IllegalArgumentException("Minimum order must be positive.");
+        if (relation.getLeadTimeDays() < 0) throw new IllegalArgumentException("Lead time cannot be negative.");
+    }
+
+    private void validateString(String value, String field) {
+        if (isBlank(value)) throw new IllegalArgumentException(field + " cannot be empty.");
+    }
+
+    private void validateEmail(String email) {
+        if (!isBlank(email) && !email.matches(EMAIL_PATTERN)) {
             throw new IllegalArgumentException("Invalid email format.");
         }
     }
 
-    private void validateString(String value, String fieldName) {
-        if (value == null || value.trim().isEmpty()) {
-            throw new IllegalArgumentException(fieldName + " cannot be null or empty.");
+    private void validatePhone(String phone) {
+        if (!isBlank(phone) && !phone.matches(PHONE_PATTERN)) {
+            throw new IllegalArgumentException("Invalid phone number format.");
         }
     }
 
-    private void validateRating(int value, String fieldName) {
-        if (value < 0 || value > 10) {
-            throw new IllegalArgumentException(fieldName + " must be between 0 and 10.");
+    private void validateRating(int rating) {
+        if (rating < 0 || rating > 5) {
+            throw new IllegalArgumentException("Rating must be between 0 and 5.");
         }
+    }
+
+    private boolean isBlank(String str) {
+        return str == null || str.trim().isEmpty();
     }
 }

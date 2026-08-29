@@ -1,6 +1,7 @@
 package com.joshuawilliams.ims.ui;
 
 import com.joshuawilliams.ims.controller.LoginController;
+import com.joshuawilliams.ims.controller.SupplierController;
 import com.joshuawilliams.ims.dao.*;
 import com.joshuawilliams.ims.database.DatabaseConnection;
 import com.joshuawilliams.ims.service.*;
@@ -47,6 +48,7 @@ public class MainApp extends Application {
     private final SupplierDao supplierDao = new SupplierDao(connection);
     private final CategoryDao categoryDao = new CategoryDao(connection);
 
+
     private final SupplierService supplierService;
 
     private ListView<String> categoryListView;
@@ -82,9 +84,11 @@ public class MainApp extends Application {
         ProductService productService = new ProductService(productDao, connection);
         productService.setActivityLogService(activityLogService);
         orderService = new OrderService(orderDao, customerService, productService);
-        supplierService = new SupplierService(supplierDao, connection); // No 'this.'
+        supplierService = new SupplierService(supplierDao, connection);
+
         salesService = new SalesService(connection);
         activityLogService = new ActivityLogService(connection);
+
 
         System.out.println("Database connection established successfully.");
     }
@@ -260,73 +264,213 @@ public class MainApp extends Application {
 
     // Methods to switch between views
     public void showDashboard() {
-        if (contentArea == null) {
-            showError("Initialization Error", "Content area is not initialized.");
-            System.out.println("Content area is not initialized.");
-            return;
+        try {
+            // Validate prerequisites
+            if (contentArea == null) {
+                showError("Initialization Error", "Content area is not initialized.");
+                return;
+            }
+
+            contentArea.getChildren().clear();
+
+            // Initialize dependencies in proper order
+            initializeDashboardDependencies();
+
+        } catch (Exception e) {
+            showError("Dashboard Error", "Failed to initialize dashboard: " + e.getMessage());
+            e.printStackTrace();
         }
+    }
 
-        contentArea.getChildren().clear();
+    private void initializeDashboardDependencies() {
+        // 1. Create UI components first
+        DashboardUIComponents uiComponents = createUIComponents();
 
-        // Initialize UI components
-        Label totalProductsLabel = new Label();
-        Label totalEmployeesLabel = new Label();
-        Label totalCustomersLabel = new Label();
-        Label totalOrdersLabel = new Label();
-        Label totalSuppliersLabel = new Label();
-        Label totalSalesLabel = new Label();
-        VBox recentActivitiesBox = new VBox();
-        Label chartPlaceholder = new Label("📊 Sales Chart Coming Soon!");
-        HBox quickActionsBox = new HBox();
+        // 2. Initialize data layer (DAOs)
+        DataAccessObjects daos = initializeDAOs();
 
-        // Initialize DAOs
-        ProductDao productDao = new ProductDao(connection);
-        EmployeeDao employeeDao = new EmployeeDao(connection);
-        CustomerDao customerDao = new CustomerDao(connection);
-        OrderDao orderDao = new OrderDao(connection);
-        SupplierDao supplierDao = new SupplierDao(connection);
+        // 3. Initialize business layer (Services)
+        BusinessServices services = initializeServices(daos);
 
-        // Initialize services
-        ActivityLogService activityLogService = new ActivityLogService(connection);
-        ProductService productService = new ProductService(productDao, connection);
-        productService.setActivityLogService(activityLogService); // Set it separately
-        EmployeeService employeeService = new EmployeeService(employeeDao, connection);
-        CustomerService customerService = new CustomerService(customerDao);
-        OrderService orderService = new OrderService(orderDao, customerService, productService);
-        SupplierService supplierService = new SupplierService(supplierDao, connection);
-        SalesService salesService = new SalesService(connection);
+        // 4. Initialize presentation layer (Views & Controllers)
+        PresentationLayer presentation = initializePresentationLayer(services);
 
-        // Initialize views
-        EmployeeManagementView employeeManagementView = new EmployeeManagementView(employeeService);
-        CustomerView customerView = new CustomerView(customerService);
-        SupplierView supplierView = new SupplierView(supplierService); // Added SupplierView
+        // 5. Wire everything together
+        DashboardController dashboardController = createDashboardController(services, uiComponents);
+        DashboardView dashboardView = createDashboardView(dashboardController, services, presentation);
 
-        // Initialize DashboardController
-        DashboardController dashboardController = new DashboardController(
-                productService, employeeService, customerService, orderService,
-                supplierService, salesService, activityLogService,
-                totalProductsLabel, totalEmployeesLabel, totalCustomersLabel,
-                totalOrdersLabel, totalSuppliersLabel, totalSalesLabel,
-                recentActivitiesBox, chartPlaceholder, quickActionsBox
-        );
-
-        // Assuming sessionManager is instantiated somewhere earlier in your code
-        SessionManager sessionManager = new SessionManager(); // or use the existing session manager instance
-
-// Create DashboardView with the required dependencies
-        DashboardView dashboardView = new DashboardView(
-                dashboardController, connection, productService, customerService,
-                orderService, employeeManagementView, customerView, supplierView, sessionManager // Added sessionManager
-        );
-
-
-        // Initialize dashboard data
+        // 6. Initialize and display
         dashboardController.initializeDashboard();
-
-        // Display the dashboard
         contentArea.getChildren().add(dashboardView.getView());
     }
 
+    private DashboardUIComponents createUIComponents() {
+        return new DashboardUIComponents(
+                new Label(), // totalProductsLabel
+                new Label(), // totalEmployeesLabel
+                new Label(), // totalCustomersLabel
+                new Label(), // totalOrdersLabel
+                new Label(), // totalSuppliersLabel
+                new Label(), // totalSalesLabel
+                new VBox(),  // recentActivitiesBox
+                new Label("📊 Sales Chart Coming Soon!"), // chartPlaceholder
+                new HBox()   // quickActionsBox
+        );
+    }
+
+    private DataAccessObjects initializeDAOs() {
+        return new DataAccessObjects(
+                new ProductDao(connection),
+                new EmployeeDao(connection),
+                new CustomerDao(connection),
+                new OrderDao(connection),
+                new SupplierDao(connection)
+        );
+    }
+
+    private BusinessServices initializeServices(DataAccessObjects daos) {
+        // Initialize core services
+        ActivityLogService activityLogService = new ActivityLogService(connection);
+
+        ProductService productService = new ProductService(daos.productDao, connection);
+        productService.setActivityLogService(activityLogService);
+
+        EmployeeService employeeService = new EmployeeService(daos.employeeDao, connection);
+        CustomerService customerService = new CustomerService(daos.customerDao);
+        OrderService orderService = new OrderService(daos.orderDao, customerService, productService);
+        SupplierService supplierService = new SupplierService(daos.supplierDao, connection);
+        SalesService salesService = new SalesService(connection);
+
+        return new BusinessServices(
+                activityLogService, productService, employeeService,
+                customerService, orderService, supplierService, salesService
+        );
+    }
+
+    private PresentationLayer initializePresentationLayer(BusinessServices services) {
+        // Initialize views that don't have circular dependencies first
+        EmployeeManagementView employeeManagementView = new EmployeeManagementView(services.employeeService);
+        CustomerView customerView = new CustomerView(services.customerService);
+
+        // Handle SupplierView/Controller circular dependency
+        SupplierView supplierView = new SupplierView(null, primaryStage); // Initialize without controller
+        SupplierController supplierController = new SupplierController(services.supplierService, supplierView);
+        supplierView.setController(supplierController); // Set controller explicitly
+
+        // Use singleton SessionManager
+        SessionManager sessionManager = SessionManager.getInstance();
+
+        return new PresentationLayer(
+                employeeManagementView, customerView,
+                supplierView, supplierController, sessionManager
+        );
+    }
+
+    private DashboardController createDashboardController(BusinessServices services, DashboardUIComponents ui) {
+        return new DashboardController(
+                services.productService, services.employeeService, services.customerService,
+                services.orderService, services.supplierService, services.salesService,
+                services.activityLogService,
+                ui.totalProductsLabel, ui.totalEmployeesLabel, ui.totalCustomersLabel,
+                ui.totalOrdersLabel, ui.totalSuppliersLabel, ui.totalSalesLabel,
+                ui.recentActivitiesBox, ui.chartPlaceholder, ui.quickActionsBox
+        );
+    }
+
+    private DashboardView createDashboardView(DashboardController controller,
+                                              BusinessServices services,
+                                              PresentationLayer presentation) {
+        return new DashboardView(
+                controller, connection, services.productService, services.customerService,
+                services.orderService, presentation.employeeManagementView,
+                presentation.customerView, presentation.supplierView,
+                presentation.sessionManager
+        );
+    }
+
+    // Helper classes to organize dependencies
+    private static class DashboardUIComponents {
+        final Label totalProductsLabel, totalEmployeesLabel, totalCustomersLabel;
+        final Label totalOrdersLabel, totalSuppliersLabel, totalSalesLabel;
+        final VBox recentActivitiesBox;
+        final Label chartPlaceholder;
+        final HBox quickActionsBox;
+
+        DashboardUIComponents(Label totalProductsLabel, Label totalEmployeesLabel,
+                              Label totalCustomersLabel, Label totalOrdersLabel,
+                              Label totalSuppliersLabel, Label totalSalesLabel,
+                              VBox recentActivitiesBox, Label chartPlaceholder,
+                              HBox quickActionsBox) {
+            this.totalProductsLabel = totalProductsLabel;
+            this.totalEmployeesLabel = totalEmployeesLabel;
+            this.totalCustomersLabel = totalCustomersLabel;
+            this.totalOrdersLabel = totalOrdersLabel;
+            this.totalSuppliersLabel = totalSuppliersLabel;
+            this.totalSalesLabel = totalSalesLabel;
+            this.recentActivitiesBox = recentActivitiesBox;
+            this.chartPlaceholder = chartPlaceholder;
+            this.quickActionsBox = quickActionsBox;
+        }
+    }
+
+    private static class DataAccessObjects {
+        final ProductDao productDao;
+        final EmployeeDao employeeDao;
+        final CustomerDao customerDao;
+        final OrderDao orderDao;
+        final SupplierDao supplierDao;
+
+        DataAccessObjects(ProductDao productDao, EmployeeDao employeeDao,
+                          CustomerDao customerDao, OrderDao orderDao,
+                          SupplierDao supplierDao) {
+            this.productDao = productDao;
+            this.employeeDao = employeeDao;
+            this.customerDao = customerDao;
+            this.orderDao = orderDao;
+            this.supplierDao = supplierDao;
+        }
+    }
+
+    private static class BusinessServices {
+        final ActivityLogService activityLogService;
+        final ProductService productService;
+        final EmployeeService employeeService;
+        final CustomerService customerService;
+        final OrderService orderService;
+        final SupplierService supplierService;
+        final SalesService salesService;
+
+        BusinessServices(ActivityLogService activityLogService, ProductService productService,
+                         EmployeeService employeeService, CustomerService customerService,
+                         OrderService orderService, SupplierService supplierService,
+                         SalesService salesService) {
+            this.activityLogService = activityLogService;
+            this.productService = productService;
+            this.employeeService = employeeService;
+            this.customerService = customerService;
+            this.orderService = orderService;
+            this.supplierService = supplierService;
+            this.salesService = salesService;
+        }
+    }
+
+    private static class PresentationLayer {
+        final EmployeeManagementView employeeManagementView;
+        final CustomerView customerView;
+        final SupplierView supplierView;
+        final SupplierController supplierController;
+        final SessionManager sessionManager;
+
+        PresentationLayer(EmployeeManagementView employeeManagementView, CustomerView customerView,
+                          SupplierView supplierView, SupplierController supplierController,
+                          SessionManager sessionManager) {
+            this.employeeManagementView = employeeManagementView;
+            this.customerView = customerView;
+            this.supplierView = supplierView;
+            this.supplierController = supplierController;
+            this.sessionManager = sessionManager;
+        }
+    }
 
     public void showNotifications() {
         contentArea.getChildren().clear();  // Clear the current content
@@ -395,9 +539,34 @@ public class MainApp extends Application {
     }
 
 
+    public void showShoppingCart() {
+        contentArea.getChildren().clear();
+
+        ShoppingCartView shoppingCartView = new ShoppingCartView(
+                customerService,  // Assuming this is a field in MainApp
+                productService,   // Assuming this is a field in MainApp
+                orderService,     // Assuming this is a field in MainApp
+                primaryStage      // The main Stage or a new Stage instance
+        );
+
+        contentArea.getChildren().add(shoppingCartView);
+    }
+
+
     public void showSuppliers() {
         contentArea.getChildren().clear();
-        contentArea.getChildren().add(new SupplierView(supplierService)); // Pass the service to the SupplierView
+
+        // Create the view with a null controller initially
+        SupplierView supplierView = new SupplierView(null, primaryStage);
+
+        // Now create the controller with the view
+        SupplierController controller = new SupplierController(supplierService, supplierView);
+
+        // Set the controller on the view
+        supplierView.setController(controller);
+
+        // Add to UI
+        contentArea.getChildren().add(supplierView);
     }
 
 

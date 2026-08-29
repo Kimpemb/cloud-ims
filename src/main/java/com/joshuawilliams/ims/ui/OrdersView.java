@@ -69,7 +69,7 @@ public class OrdersView extends BorderPane {
 
     private void openOrderForm() {
         // Open the order management UI with the logged-in employee info
-        OrderManagementUI orderManagementUI = new OrderManagementUI(customerService, productService, orderService, new SessionManager());
+        OrderManagementUI orderManagementUI = new OrderManagementUI(customerService, productService, orderService, SessionManager.getInstance());
         Stage dialogStage = new Stage();
         dialogStage.initModality(Modality.APPLICATION_MODAL);
         dialogStage.initOwner(primaryStage);

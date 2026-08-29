@@ -2,6 +2,7 @@ package com.joshuawilliams.ims.service;
 
 import com.joshuawilliams.ims.dao.ProductDao;
 import com.joshuawilliams.ims.model.Product;
+import com.joshuawilliams.ims.model.ProductFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -41,7 +42,8 @@ public class ProductService {
             return false;
         }
 
-        Product product = new Product(name, price, quantity, categoryId);
+        String productType = deriveProductType(categoryId);
+        Product product = ProductFactory.create(0, name, price, quantity, categoryId, productType);
 
         try {
             if (productDao.addProduct(product)) {
@@ -63,6 +65,26 @@ public class ProductService {
         return name != null && !name.trim().isEmpty() && productDao.doesProductExist(name);
     }
 
+    /**
+     * Maps a category to the product_type used to pick the right Product
+     * subclass. Keeps the existing AddProductDialog UI (which only ever
+     * collected a category, not a type) working unchanged — the type is
+     * inferred rather than requiring a new UI field.
+     */
+    private String deriveProductType(int categoryId) {
+        String categoryName = getCategoryNameById(categoryId);
+        if (categoryName == null) {
+            return "GENERAL";
+        }
+        String normalized = categoryName.trim().toUpperCase();
+        return switch (normalized) {
+            case "ELECTRONICS" -> "ELECTRONICS";
+            case "CLOTHING" -> "CLOTHING";
+            case "FOOD", "BEVERAGES", "TOFFEES" -> "GROCERY";
+            default -> "GENERAL";
+        };
+    }
+
     public List<Product> getAllProducts() {
         String query = "SELECT * FROM products";
         List<Product> products = new ArrayList<>();
@@ -75,7 +97,8 @@ public class ProductService {
                 double price = resultSet.getDouble("price");
                 int quantity = resultSet.getInt("quantity");
                 int categoryId = resultSet.getInt("category_id");
-                products.add(new Product(id, name, price, quantity, categoryId));
+                String productType = resultSet.getString("product_type");
+                products.add(ProductFactory.create(id, name, price, quantity, categoryId, productType));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -84,13 +107,14 @@ public class ProductService {
     }
 
     public boolean updateProduct(Product product) {
-        String sql = "UPDATE products SET name = ?, price = ?, quantity = ?, category_id = ? WHERE id = ?";
+        String sql = "UPDATE products SET name = ?, price = ?, quantity = ?, category_id = ?, product_type = ? WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, product.getName());
             stmt.setDouble(2, product.getPrice());
             stmt.setInt(3, product.getQuantity());
             stmt.setInt(4, product.getCategoryId());
-            stmt.setInt(5, product.getId());
+            stmt.setString(5, product.getProductType());
+            stmt.setInt(6, product.getId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();

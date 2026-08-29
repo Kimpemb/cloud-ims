@@ -63,7 +63,7 @@ public class OrderController {
         if (customer != null && !selectedProducts.isEmpty()) {
             double totalPrice = calculateTotalPrice();
 
-            Employee loggedInEmployee = SessionManager.getLoggedInEmployee();
+            Employee loggedInEmployee = SessionManager.getInstance().getLoggedInEmployee();
             String currentUserName = loggedInEmployee != null ? loggedInEmployee.getName() : "Unknown";
             int currentUserId = (loggedInEmployee != null) ? getEmployeeId(loggedInEmployee) : -1;
 

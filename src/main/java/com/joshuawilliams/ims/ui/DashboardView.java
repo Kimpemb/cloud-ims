@@ -100,7 +100,7 @@ public class DashboardView {
                     Window owner = quickActionsBox.getScene() != null ? quickActionsBox.getScene().getWindow() : null;
                     customerView.createAddCustomerDialog(owner);
                 }),
-                createActionButton("Add Supplier", () -> supplierView.showSupplierDialog(null)) // Pass null for a new supplier
+                createActionButton("Add Supplier", () -> supplierView.showAddSupplierDialog()) // Pass null for a new supplier
         );
         return quickActionsBox;
     }

@@ -35,7 +35,10 @@ public class OrderService {
                 System.out.println("Product not available or insufficient stock: " + products.get(i).getName());
                 return false;
             }
-            totalAmount += product.getPrice() * quantities.get(i);
+            // Uses calculateLineTotal() (not price * quantity) so each product's
+            // polymorphic discount rule is applied here, at the point the order
+            // total actually gets persisted — not just previewed in the cart.
+            totalAmount += product.calculateLineTotal(quantities.get(i));
         }
 
         order.setTotalAmount(totalAmount);
@@ -71,4 +74,3 @@ public class OrderService {
         return orderDao.deleteOrder(orderId);
     }
 }
-

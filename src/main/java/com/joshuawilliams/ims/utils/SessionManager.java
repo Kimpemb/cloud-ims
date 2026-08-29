@@ -3,29 +3,37 @@ package com.joshuawilliams.ims.utils;
 import com.joshuawilliams.ims.model.Employee;
 
 public class SessionManager {
-
-    private static Employee loggedInEmployee;
+    private static SessionManager instance;
+    private Employee loggedInEmployee;
 
     // Private constructor to prevent instantiation
-    public SessionManager() {}
+    private SessionManager() {}
+
+    // Get singleton instance
+    public static SessionManager getInstance() {
+        if (instance == null) {
+            instance = new SessionManager();
+        }
+        return instance;
+    }
 
     // Set the logged-in employee
-    public static void setLoggedInEmployee(Employee employee) {
+    public void setLoggedInEmployee(Employee employee) {
         loggedInEmployee = employee;
     }
 
     // Get the logged-in employee
-    public static Employee getLoggedInEmployee() {
+    public Employee getLoggedInEmployee() {
         return loggedInEmployee;
     }
 
     // Clear the session (e.g., on logout)
-    public static void clearSession() {
+    public void clearSession() {
         loggedInEmployee = null;
     }
 
     // Get username safely, with fallback
-    public static String getCurrentUsernameOrDefault() {
+    public String getCurrentUsernameOrDefault() {
         if (loggedInEmployee != null && loggedInEmployee.getName() != null && !loggedInEmployee.getName().isEmpty()) {
             return loggedInEmployee.getName();
         }
@@ -33,7 +41,7 @@ public class SessionManager {
     }
 
     // Check if an employee is logged in
-    public static boolean isLoggedIn() {
+    public boolean isLoggedIn() {
         return loggedInEmployee != null;
     }
 }

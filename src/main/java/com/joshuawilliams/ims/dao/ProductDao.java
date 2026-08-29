@@ -1,6 +1,7 @@
 package com.joshuawilliams.ims.dao;
 
 import com.joshuawilliams.ims.model.Product;
+import com.joshuawilliams.ims.model.ProductFactory;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +22,14 @@ public class ProductDao {
 
     // Method to add a new product to the database
     public boolean addProduct(Product product) {
-        String sql = "INSERT INTO products (name, price, quantity, category_id) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO products (name, price, quantity, category_id, product_type) VALUES (?, ?, ?, ?, ?)";
 
         try (PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setString(1, product.getName());
             stmt.setDouble(2, product.getPrice());
             stmt.setInt(3, product.getQuantity());
             stmt.setInt(4, product.getCategoryId());
+            stmt.setString(5, product.getProductType());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -74,12 +76,13 @@ public class ProductDao {
             ResultSet resultSet = statement.executeQuery();
 
             while (resultSet.next()) {
-                Product product = new Product(
+                Product product = ProductFactory.create(
                         resultSet.getInt("id"),
                         resultSet.getString("name"),
                         resultSet.getDouble("price"),
                         resultSet.getInt("quantity"),
-                        resultSet.getInt("category_id")
+                        resultSet.getInt("category_id"),
+                        resultSet.getString("product_type")
                 );
                 products.add(product);  // Add product to the list
             }
@@ -111,18 +114,19 @@ public class ProductDao {
     // Method to fetch all products from the database
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
-        String query = "SELECT id, name, price, quantity, category_id FROM products";
+        String query = "SELECT id, name, price, quantity, category_id, product_type FROM products";
 
         try (PreparedStatement statement = connection.prepareStatement(query);
              ResultSet resultSet = statement.executeQuery()) {
 
             while (resultSet.next()) {
-                Product product = new Product(
+                Product product = ProductFactory.create(
                         resultSet.getInt("id"),
                         resultSet.getString("name"),
                         resultSet.getDouble("price"),
                         resultSet.getInt("quantity"),
-                        resultSet.getInt("category_id")
+                        resultSet.getInt("category_id"),
+                        resultSet.getString("product_type")
                 );
                 products.add(product);
             }
@@ -155,12 +159,13 @@ public class ProductDao {
             stmt.setInt(1, productId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                return new Product(
+                return ProductFactory.create(
                         rs.getInt("id"),
                         rs.getString("name"),
                         rs.getDouble("price"),
                         rs.getInt("quantity"),
-                        rs.getInt("category_id")
+                        rs.getInt("category_id"),
+                        rs.getString("product_type")
                 );
             }
         } catch (SQLException e) {
