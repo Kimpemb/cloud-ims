@@ -6,3 +6,8 @@ spring:
 
 server:
   port: ${PORT:8080}
+
+aws:
+  region: ${AWS_REGION:eu-north-1}
+  s3:
+    bucket-name: ${S3_BUCKET_NAME}
